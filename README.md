@@ -1,6 +1,6 @@
 # Deal Online
 
-Browser-based multiplayer property card game (Monopoly Deal-style), 2-5 players, bots can fill seats.
+Browser-based multiplayer property card game (Monopoly Deal-style), 2-10 players (one extra deck per 5 players), bots can fill seats.
 
     npm install
     npm start          # http://localhost:3000  (set PORT to change)

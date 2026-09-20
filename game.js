@@ -29,6 +29,8 @@ const HOTEL_RENT = 4;
 const WIN_SETS = 3;
 const MAX_HAND = 7;
 const PLAYS_PER_TURN = 3;
+const PLAYERS_PER_DECK = 5; // every 5 players (or part of 5) adds another full deck
+const MAX_PLAYERS = 10;
 
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
@@ -38,10 +40,15 @@ function shuffle(a) {
   return a;
 }
 
-function buildDeck() {
+function buildDeck(copies = 1) {
   const cards = [];
   let n = 0;
-  const add = (o, count = 1) => { for (let i = 0; i < count; i++) cards.push({ id: ++n, ...o }); };
+  for (let d = 0; d < copies; d++) addDeck(cards, () => ++n);
+  return cards;
+}
+
+function addDeck(cards, nextId) {
+  const add = (o, count = 1) => { for (let i = 0; i < count; i++) cards.push({ id: nextId(), ...o }); };
   for (const [v, c] of [[1, 6], [2, 5], [3, 3], [4, 3], [5, 2], [10, 1]]) add({ kind: 'money', value: v, name: `$${v}M` }, c);
   const propCount = { brown: 2, lblue: 3, pink: 3, orange: 3, red: 3, yellow: 3, green: 3, dblue: 2, rr: 4, util: 2 };
   for (const c of COLORS) add({ kind: 'prop', colors: [c], as: c, value: PROP_VALUE[c], name: COLOR_NAME[c] }, propCount[c]);
@@ -54,7 +61,6 @@ function buildDeck() {
     add({ kind: 'rent', colors: pair, value: 1, name: 'Rent' }, 2);
   }
   add({ kind: 'rent', colors: COLORS.slice(), value: 3, name: 'Wild Rent', wildRent: true }, 3);
-  return cards;
 }
 
 const fail = (error) => ({ error });
@@ -69,7 +75,8 @@ const cardLabel = (c) => {
 class Game {
   constructor(seats) {
     this.players = seats.map((s) => ({ id: s.id, name: s.name, bot: !!s.bot, hand: [], bank: [], groups: {} }));
-    this.deck = shuffle(buildDeck());
+    this.decks = Math.ceil(seats.length / PLAYERS_PER_DECK);
+    this.deck = shuffle(buildDeck(this.decks));
     this.discard = [];
     this.log = [];
     this.seq = 0;
@@ -741,4 +748,4 @@ function botAct(g, p) {
   return fail('Nothing to do.');
 }
 
-module.exports = { Game, botAct, COLORS, COLOR_NAME, SET_SIZE, RENT, ACTIONS, buildDeck };
+module.exports = { Game, botAct, COLORS, COLOR_NAME, SET_SIZE, RENT, ACTIONS, buildDeck, MAX_PLAYERS, PLAYERS_PER_DECK };

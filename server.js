@@ -4,11 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
-const { Game, botAct, COLORS, COLOR_NAME, SET_SIZE, RENT } = require('./game');
+const { Game, botAct, COLORS, COLOR_NAME, SET_SIZE, RENT, MAX_PLAYERS, PLAYERS_PER_DECK } = require('./game');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
-const MAX_PLAYERS = 5;
 const DROP_GRACE_MS = 30_000;
 const EMPTY_ROOM_MS = 15 * 60_000;
 const BOT_NAMES = ['Ada', 'Bolt', 'Chip', 'Dot', 'Echo', 'Fizz', 'Gizmo'];
@@ -107,7 +106,7 @@ function onDrop(room, p) {
 
 wss.on('connection', (ws) => {
   ws.ctx = null; // { room, player }
-  send(ws, { t: 'hello', rules: { COLORS, COLOR_NAME, SET_SIZE, RENT } });
+  send(ws, { t: 'hello', rules: { COLORS, COLOR_NAME, SET_SIZE, RENT, MAX_PLAYERS, PLAYERS_PER_DECK } });
   ws.on('message', (raw) => {
     let m;
     try { m = JSON.parse(raw); } catch { return; }

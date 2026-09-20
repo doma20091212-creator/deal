@@ -230,7 +230,7 @@ function renderHome() {
   root.innerHTML = '';
   const codeFromUrl = new URLSearchParams(location.search).get('room') || '';
   const box = el('div', 'center');
-  box.innerHTML = `<h1>🏠 Deal Online</h1><p class="dim">A fast property card game for 2–5 players. Play with friends online — bots can fill any empty seat.</p>
+  box.innerHTML = `<h1>🏠 Deal Online</h1><p class="dim">A fast property card game for 2–10 players (a second deck joins the pile at 6+). Play with friends online — bots can fill any empty seat.</p>
   <div class="card-panel">
     <label class="dim">Your name</label>
     <div class="row" style="margin:6px 0 14px"><input id="name" maxlength="16" placeholder="Name" value="${esc(safeGet('deal-name') || '')}"></div>
@@ -263,7 +263,7 @@ function renderLobby() {
   box.innerHTML = `<h2>Waiting room</h2><div class="card-panel" style="text-align:center">
     <div class="dim">Room code</div><div class="code">${S.code}</div>
     <div class="row" style="margin-top:12px;justify-content:center"><input readonly value="${esc(link)}" id="lnk" style="max-width:300px"><button id="cp">Copy link</button></div></div>
-    <ul class="plist" id="pl"></ul><div class="row" id="ctl"></div>`;
+    <div class="dim" style="text-align:center" id="decks"></div><ul class="plist" id="pl"></ul><div class="row" id="ctl"></div>`;
   root.appendChild(box);
   $('#cp').onclick = () => { $('#lnk').select(); (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => toast('Link copied'), () => document.execCommand('copy')); };
   for (const p of S.lobby) {
@@ -271,9 +271,11 @@ function renderLobby() {
     if (isHost && p.id !== S.you) { const b = el('button', '', 'Remove'); b.onclick = () => send({ t: 'kick', id: p.id }); li.appendChild(b); }
     $('#pl').appendChild(li);
   }
+  const decks = Math.max(1, Math.ceil(S.lobby.length / RULES.PLAYERS_PER_DECK));
+  $('#decks').textContent = `${S.lobby.length}/${RULES.MAX_PLAYERS} players · ${decks} deck${decks > 1 ? 's' : ''} (${decks * 106} cards)`;
   const ctl = $('#ctl');
   if (isHost) {
-    const add = el('button', '', '+ Add bot'); add.onclick = () => send({ t: 'addbot' }); add.disabled = S.lobby.length >= 5;
+    const add = el('button', '', '+ Add bot'); add.onclick = () => send({ t: 'addbot' }); add.disabled = S.lobby.length >= RULES.MAX_PLAYERS;
     const st = el('button', 'primary', 'Start game'); st.onclick = () => send({ t: 'start' }); st.disabled = S.lobby.length < 2;
     ctl.append(add, st);
   } else ctl.appendChild(el('span', 'dim', 'Waiting for the host to start…'));

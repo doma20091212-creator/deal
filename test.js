@@ -13,10 +13,10 @@ function countCards(g) {
   return ids;
 }
 
-const total = buildDeck().length;
 const stats = { games: 0, wins: 0, stalled: 0, turns: [] };
 for (let n = 0; n < 400; n++) {
-  const count = 2 + (n % 4);
+  const count = 2 + (n % 9); // 2..10 players -> 1 or 2 decks
+  const total = buildDeck(Math.ceil(count / 5)).length;
   const g = new Game(Array.from({ length: count }, (_, i) => ({ id: 'p' + i, name: 'Bot' + i, bot: true })));
   let steps = 0, turns = 0, last = g.turn;
   while (g.stage !== 'over' && steps < 20000) {
@@ -32,5 +32,5 @@ for (let n = 0; n < 400; n++) {
   if (g.stage === 'over') { stats.wins++; stats.turns.push(turns); } else stats.stalled++;
 }
 const avg = stats.turns.reduce((a, b) => a + b, 0) / stats.turns.length;
-console.log(`deck=${total} games=${stats.games} finished=${stats.wins} stalled=${stats.stalled} avgTurns=${avg.toFixed(1)} max=${Math.max(...stats.turns)}`);
+console.log(`games=${stats.games} finished=${stats.wins} stalled=${stats.stalled} avgTurns=${avg.toFixed(1)} max=${Math.max(...stats.turns)}`);
 if (stats.stalled) process.exit(1);
