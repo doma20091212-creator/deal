@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deal Online</title>
+<style>
+:root {
+  --bg: #12181f; --panel: #1b2430; --panel2: #232f3e; --line: #33445a; --text: #e8eef5; --dim: #8fa2b8;
+  --accent: #4cc38a; --danger: #ef5b5b; --warn: #f2b84b;
+  --c-brown: #8b5a2b; --c-lblue: #7fd0f0; --c-pink: #ee6fae; --c-orange: #f28c28; --c-red: #e0413d;
+  --c-yellow: #f3d13a; --c-green: #2f9e57; --c-dblue: #2450b5; --c-rr: #2b2f36; --c-util: #a9b4c0;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, Segoe UI, Roboto, sans-serif; min-height: 100vh; }
+button { font: inherit; cursor: pointer; border: 0; border-radius: 8px; padding: 9px 16px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: #062015; font-weight: 700; border-color: var(--accent); }
+button.danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 700; }
+input { font: inherit; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: #0e141a; color: var(--text); }
+h1, h2, h3 { margin: 0; }
+.center { max-width: 460px; margin: 8vh auto; padding: 0 16px; }
+.card-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-top: 16px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row > input { flex: 1; min-width: 0; }
+.dim { color: var(--dim); }
+.code { font: 800 44px/1 ui-monospace, Consolas, monospace; letter-spacing: 8px; color: var(--accent); }
+.plist { list-style: none; padding: 0; margin: 12px 0; }
+.plist li { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--panel2); border-radius: 8px; margin-bottom: 6px; }
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--line); color: var(--dim); margin-left: 6px; }
+
+/* game layout */
+#game { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; }
+.top { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
+.status { font-weight: 600; }
+.status.mine { color: var(--accent); }
+.opps { display: flex; gap: 10px; padding: 10px; overflow-x: auto; }
+.opp { flex: 1; min-width: 210px; background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.opp.turn { border-color: var(--accent); }
+.opp .hd { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; gap: 6px; }
+.opp .hd small { color: var(--dim); font-weight: 400; }
+.mid { display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+.board { padding: 0 10px 10px; overflow-y: auto; }
+.center-row { display: flex; gap: 18px; align-items: center; justify-content: center; padding: 8px 0 14px; flex-wrap: wrap; }
+.pile { text-align: center; font-size: 12px; color: var(--dim); }
+.pile .card { margin: 0 auto 4px; }
+.deck-back { width: 74px; height: 104px; border-radius: 8px; background: repeating-linear-gradient(45deg, #2a3a52, #2a3a52 6px, #24324a 6px, #24324a 12px); border: 2px solid #46617f; margin: 0 auto 4px; display: grid; place-items: center; font-weight: 800; color: #6c88a8; }
+.mybox { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.mybox.turn { border-color: var(--accent); }
+.zone { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; margin-top: 6px; }
+.zone-title { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+.bank { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.group { background: var(--panel2); border-radius: 8px; padding: 4px 6px 6px; text-align: center; min-width: 60px; }
+.group .gh { font-size: 11px; color: var(--dim); margin-bottom: 3px; white-space: nowrap; }
+.group.done { outline: 2px solid var(--accent); }
+.stack { position: relative; }
+.stack .card { position: absolute; left: 0; }
+.log { border-left: 1px solid var(--line); background: var(--panel); padding: 10px; overflow-y: auto; font-size: 13px; }
+.log div { padding: 3px 0; border-bottom: 1px dotted #2b3a4d; }
+.log .hd { color: var(--warn); font-weight: 600; }
+.handwrap { background: var(--panel); border-top: 1px solid var(--line); padding: 8px 10px 10px; }
+.hand { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px 4px; min-height: 148px; align-items: flex-end; }
+.hand-hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* cards */
+.card { width: 86px; height: 122px; border-radius: 9px; background: #f6f1e4; color: #222; border: 2px solid #2a2a2a; position: relative; flex: none; overflow: hidden; display: flex; flex-direction: column; font-size: 11px; user-select: none; box-shadow: 0 2px 5px #0006; }
+.card.click { cursor: pointer; transition: transform .1s; }
+.card.click:hover { transform: translateY(-8px); }
+.card.sel { outline: 3px solid var(--accent); transform: translateY(-8px); }
+.card.dim { opacity: .5; }
+.card .val { position: absolute; top: 2px; left: 4px; font-weight: 800; font-size: 11px; background: #fffc; border-radius: 4px; padding: 0 3px; z-index: 2; }
+.card .band { flex: 0 0 34px; display: flex; align-items: flex-end; justify-content: center; padding: 3px; font-weight: 700; font-size: 11px; text-align: center; color: #fff; text-shadow: 0 1px 2px #000a; line-height: 1.05; }
+.card .body { flex: 1; padding: 3px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; }
+.card .big { font-size: 26px; font-weight: 800; }
+.card .icon { font-size: 28px; }
+.card .nm { font-weight: 700; font-size: 11px; line-height: 1.1; }
+.card .desc { font-size: 9px; color: #444; line-height: 1.1; }
+.card .ladder { font-size: 9px; color: #333; line-height: 1.25; text-align: left; align-self: stretch; padding-left: 8px; }
+.card.k-money { background: #d9efdc; }
+.card.k-money .big { color: #1f6b3a; }
+.card.k-action { background: #fbe9d0; }
+.card.k-rent { background: #fff; }
+.card.k-rent .bands { flex: 1; display: flex; flex-direction: column; }
+.card.k-rent .bands div { flex: 1; }
+.card.mini { width: 46px; height: 64px; border-width: 1px; border-radius: 5px; font-size: 8px; }
+.card.mini .val { font-size: 8px; top: 1px; left: 2px; }
+.card.mini .band { flex: 0 0 24px; font-size: 7px; padding: 1px; }
+.card.mini .big { font-size: 13px; }
+.card.mini .icon { font-size: 15px; }
+.card.mini .nm { font-size: 7px; }
+.card.mini .desc, .card.mini .ladder { display: none; }
+.card.mini .body { padding: 1px; }
+.card.small { width: 62px; height: 88px; border-radius: 7px; }
+.card.small .band { flex-basis: 26px; font-size: 8px; }
+.card.small .big { font-size: 18px; }
+.card.small .icon { font-size: 20px; }
+.card.small .desc, .card.small .ladder { display: none; }
+.card.small .nm { font-size: 8px; }
+.card.big-card { width: 130px; height: 184px; font-size: 15px; }
+
+/* modal */
+#modal { position: fixed; inset: 0; background: #000a; display: none; align-items: center; justify-content: center; z-index: 50; padding: 14px; }
+#modal.open { display: flex; }
+.dlg { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.dlg h3 { margin-bottom: 4px; }
+.dlg .sub { color: var(--dim); margin-bottom: 12px; }
+.dlg .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.choice { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-radius: 10px; background: var(--panel2); border: 2px solid var(--line); cursor: pointer; min-width: 90px; }
+.choice:hover, .choice.on { border-color: var(--accent); }
+.choice .who { font-size: 12px; color: var(--dim); text-align: center; }
+.chip { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; border: 1px solid #0006; }
+#toast { position: fixed; bottom: 190px; left: 50%; transform: translateX(-50%); background: var(--danger); color: #fff; padding: 8px 16px; border-radius: 8px; z-index: 99; display: none; }
+.banner { background: var(--warn); color: #2a1d00; font-weight: 700; padding: 8px 14px; border-radius: 8px; }
+.win { text-align: center; padding: 8px; }
+.win h2 { font-size: 30px; color: var(--accent); }
+@media (max-width: 800px) {
+  .mid { grid-template-columns: 1fr; }
+  .log { display: none; }
+  .card { width: 72px; height: 102px; }
+  #game { height: auto; min-height: 100vh; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script>
+'use strict';
+// ---------------------------------------------------------------- helpers
+let RULES = null;
+const COL = (c) => `var(--c-${c})`;
+const $ = (s, r = document) => r.querySelector(s);
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cname = (c) => RULES.COLOR_NAME[c];
+const size = (c) => RULES.SET_SIZE[c];
+const ACT = {
+  dealbreaker: ['💥', 'Steal a complete set from any player.'],
+  jsn: ['🚫', 'Cancel an action played against you. Play it in response.'],
+  sly: ['🕵️', 'Steal 1 property that is not part of a complete set.'],
+  forced: ['🔄', 'Swap 1 property with another player (neither in a complete set).'],
+  debt: ['💰', 'Force any player to pay you $5M.'],
+  bday: ['🎂', 'All players pay you $2M.'],
+  passgo: ['⏩', 'Draw 2 extra cards.'],
+  dblrent: ['✖️2', 'Play with a Rent card to double it.'],
+  house: ['🏠', 'Add to a complete set: +$3M rent.'],
+  hotel: ['🏨', 'Add to a set with a house: +$4M rent.'],
+};
+
+function cardEl(c, o = {}) {
+  const d = el('div', 'card k-' + c.kind + (o.size ? ' ' + o.size : ''));
+  if (o.onClick) { d.classList.add('click'); d.onclick = o.onClick; }
+  if (o.sel) d.classList.add('sel');
+  if (o.dim) d.classList.add('dim');
+  const valTxt = c.kind === 'wild' && c.value === 0 ? '' : `$${c.value}M`;
+  if (valTxt) d.appendChild(el('div', 'val', valTxt));
+  const ladder = (col) => RULES.RENT[col].map((r, i) => `${i + 1}: $${r}M`).join('<br>');
+  if (c.kind === 'money') {
+    d.appendChild(el('div', 'body', `<div class="big">$${c.value}M</div>`));
+  } else if (c.kind === 'prop') {
+    d.appendChild(Object.assign(el('div', 'band', esc(cname(c.as || c.colors[0]))), { style: `background:${COL(c.colors[0])};${c.colors[0] === 'yellow' || c.colors[0] === 'lblue' || c.colors[0] === 'util' ? 'color:#111;text-shadow:none' : ''}` }));
+    d.appendChild(el('div', 'body', `<div class="ladder">${ladder(c.colors[0])}</div>`));
+  } else if (c.kind === 'wild') {
+    const cols = c.as && !o.both ? [c.as] : c.colors;
+    const rainbow = c.colors.length > 2 && !(c.as && !o.both);
+    const bg = rainbow ? 'linear-gradient(90deg,#e0413d,#f28c28,#f3d13a,#2f9e57,#2450b5,#ee6fae)'
+      : cols.length === 1 ? COL(cols[0]) : `linear-gradient(90deg,${COL(cols[0])} 50%,${COL(cols[1])} 50%)`;
+    d.appendChild(Object.assign(el('div', 'band', 'WILD'), { style: `background:${bg}` }));
+    const label = c.as ? `as ${esc(cname(c.as))}` : rainbow ? 'Any color' : c.colors.map((x) => esc(cname(x))).join(' / ');
+    d.appendChild(el('div', 'body', `<div class="nm">${label}</div>`));
+  } else if (c.kind === 'action') {
+    d.appendChild(el('div', 'body', `<div class="icon">${ACT[c.act][0]}</div><div class="nm">${esc(c.name)}</div><div class="desc">${esc(ACT[c.act][1])}</div>`));
+  } else if (c.kind === 'rent') {
+    const cols = c.colors.length > 2 ? ['red', 'orange', 'yellow', 'green', 'dblue', 'pink'] : c.colors;
+    const bands = el('div', 'bands');
+    cols.forEach((x) => bands.appendChild(Object.assign(el('div'), { style: `background:${COL(x)}` })));
+    const lab = el('div', 'nm', c.wildRent ? 'WILD RENT<br>1 player' : 'RENT<br>all players');
+    lab.style.cssText = 'padding:3px;background:#fffc;text-align:center';
+    d.appendChild(bands); d.appendChild(lab);
+  }
+  return d;
+}
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.h);
+  toast.h = setTimeout(() => { t.style.display = 'none'; }, 2600);
+}
+
+// ---------------------------------------------------------------- connection
+let ws, S = null, roomInfo = null, connecting = false;
+const ui = { modalKey: null, userModal: false, paySel: new Set(), discSel: new Set() };
+
+function connect() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  ws.onopen = () => {
+    connecting = false;
+    const saved = safeGet('deal-session');
+    if (saved) ws.send(JSON.stringify({ t: 'rejoin', ...JSON.parse(saved) }));
+    else renderHome();
+  };
+  ws.onmessage = (ev) => onMsg(JSON.parse(ev.data));
+  ws.onclose = () => { toast('Connection lost — reconnecting…'); setTimeout(connect, 1500); };
+}
+function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function safeSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
+const send = (m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
+const play = (m) => send({ t: 'g', m });
+
+function onMsg(m) {
+  if (m.t === 'hello') RULES = m.rules;
+  else if (m.t === 'joined') { safeSet('deal-session', JSON.stringify({ code: m.code, token: m.token })); }
+  else if (m.t === 'gone') { safeSet('deal-session', null); S = null; closeModal(); renderHome(); }
+  else if (m.t === 'error') toast(m.msg);
+  else if (m.t === 'state') { S = m; render(); }
+}
+
+// ---------------------------------------------------------------- screens
+function renderHome() {
+  const root = $('#root');
+  root.innerHTML = '';
+  const codeFromUrl = new URLSearchParams(location.search).get('room') || '';
+  const box = el('div', 'center');
+  box.innerHTML = `<h1>🏠 Deal Online</h1><p class="dim">A fast property card game for 2–5 players. Play with friends online — bots can fill any empty seat.</p>
+  <div class="card-panel">
+    <label class="dim">Your name</label>
+    <div class="row" style="margin:6px 0 14px"><input id="name" maxlength="16" placeholder="Name" value="${esc(safeGet('deal-name') || '')}"></div>
+    <button class="primary" id="create" style="width:100%">Create a room</button>
+    <div class="dim" style="text-align:center;margin:12px 0">or join a friend</div>
+    <div class="row"><input id="code" maxlength="4" placeholder="ROOM CODE" value="${esc(codeFromUrl.toUpperCase())}" style="text-transform:uppercase;letter-spacing:4px;text-align:center"><button id="join">Join</button></div>
+  </div>
+  <details class="card-panel" style="padding:12px 20px"><summary>How to play</summary>
+  <p>Be the first to own <b>3 complete property sets</b> of different colors.</p>
+  <p>Each turn you draw 2 cards, then play up to 3: bank money, place properties, or use action cards. Keep at most 7 cards at the end of your turn.</p>
+  <p>Rent, Debt Collector and Birthday make others pay from their <b>bank and properties</b> (no change given). <b>Just Say No</b> cancels an action — and can be cancelled in turn. Click any card in your hand to see what you can do with it.</p></details>`;
+  root.appendChild(box);
+  const name = () => { const v = $('#name').value.trim(); if (!v) { toast('Enter your name first'); return null; } safeSet('deal-name', v); return v; };
+  $('#create').onclick = () => { const n = name(); if (n) send({ t: 'create', name: n }); };
+  $('#join').onclick = () => { const n = name(); if (n) send({ t: 'join', name: n, code: $('#code').value }); };
+}
+
+function render() {
+  if (!S) return renderHome();
+  if (!S.game) { closeModal(); return renderLobby(); }
+  renderGame();
+}
+
+function renderLobby() {
+  const root = $('#root');
+  root.innerHTML = '';
+  const isHost = S.host === S.you;
+  const link = `${location.origin}/?room=${S.code}`;
+  const box = el('div', 'center');
+  box.innerHTML = `<h2>Waiting room</h2><div class="card-panel" style="text-align:center">
+    <div class="dim">Room code</div><div class="code">${S.code}</div>
+    <div class="row" style="margin-top:12px;justify-content:center"><input readonly value="${esc(link)}" id="lnk" style="max-width:300px"><button id="cp">Copy link</button></div></div>
+    <ul class="plist" id="pl"></ul><div class="row" id="ctl"></div>`;
+  root.appendChild(box);
+  $('#cp').onclick = () => { $('#lnk').select(); (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => toast('Link copied'), () => document.execCommand('copy')); };
+  for (const p of S.lobby) {
+    const li = el('li', '', `<span>${esc(p.name)}${p.id === S.host ? '<span class="tag">host</span>' : ''}${p.id === S.you ? '<span class="tag">you</span>' : ''}${!p.connected ? '<span class="tag">offline</span>' : ''}</span>`);
+    if (isHost && p.id !== S.you) { const b = el('button', '', 'Remove'); b.onclick = () => send({ t: 'kick', id: p.id }); li.appendChild(b); }
+    $('#pl').appendChild(li);
+  }
+  const ctl = $('#ctl');
+  if (isHost) {
+    const add = el('button', '', '+ Add bot'); add.onclick = () => send({ t: 'addbot' }); add.disabled = S.lobby.length >= 5;
+    const st = el('button', 'primary', 'Start game'); st.onclick = () => send({ t: 'start' }); st.disabled = S.lobby.length < 2;
+    ctl.append(add, st);
+  } else ctl.appendChild(el('span', 'dim', 'Waiting for the host to start…'));
+  const lv = el('button', '', 'Leave'); lv.onclick = () => send({ t: 'leave' }); ctl.appendChild(lv);
+}
+
+// ---------------------------------------------------------------- game screen
+const G = () => S.game;
+const player = (id) => G().players.find((p) => p.id === id);
+const me = () => player(S.you);
+const myTurn = () => G().turn === S.you;
+const canAct = () => myTurn() && G().stage === 'play' && !G().winner;
+
+function complete(p, col) { const g = p.groups[col]; return !!g && g.cards.length >= size(col); }
+function rentNow(p, col) {
+  const g = p.groups[col];
+  if (!g || !g.cards.length) return 0;
+  const n = Math.min(g.cards.length, size(col));
+  let r = RULES.RENT[col][n - 1];
+  if (n >= size(col)) { if (g.house) r += 3; if (g.hotel) r += 4; }
+  return r;
+}
+
+function groupEl(p, col, opts = {}) {
+  const g = p.groups[col];
+  const done = complete(p, col);
+  const box = el('div', 'group' + (done ? ' done' : ''));
+  box.innerHTML = `<div class="gh"><span class="chip" style="background:${COL(col)}"></span>${g.cards.length}/${size(col)}${done ? ' ✓' : ''} · $${rentNow(p, col)}M${g.house ? ' 🏠' : ''}${g.hotel ? '🏨' : ''}</div>`;
+  const step = opts.size === 'mini' ? 16 : 24;
+  const cw = opts.size === 'mini' ? 46 : 62, ch = opts.size === 'mini' ? 64 : 88;
+  const st = el('div', 'stack');
+  st.style.width = cw + 'px';
+  st.style.height = ch + step * (g.cards.length - 1) + 'px';
+  g.cards.forEach((c, i) => {
+    const e = cardEl(c, { size: opts.size || 'small', onClick: opts.onCard ? () => opts.onCard(c, col) : null });
+    e.style.top = i * step + 'px';
+    e.style.zIndex = i;
+    if (opts.onCard) e.classList.remove('click'), e.style.cursor = 'pointer';
+    st.appendChild(e);
+  });
+  box.appendChild(st);
+  return box;
+}
+
+function renderGame() {
+  const g = G();
+  const root = $('#root');
+  root.innerHTML = '';
+  const game = el('div'); game.id = 'game';
+  root.appendChild(game);
+
+  // top bar
+  const turnP = player(g.turn);
+  const top = el('div', 'top');
+  const st = el('div', 'status' + (myTurn() ? ' mine' : ''));
+  st.innerHTML = statusText();
+  const right = el('div', 'row');
+  right.innerHTML = `<span class="dim">Room ${S.code}</span>`;
+  const lv = el('button', '', 'Leave'); lv.onclick = () => { if (confirm('Leave the game? A bot will take your seat.')) send({ t: 'leave' }); };
+  right.appendChild(lv);
+  top.append(st, right);
+  game.appendChild(top);
+
+  // opponents
+  const opps = el('div', 'opps');
+  for (const p of g.players) {
+    if (p.id === S.you) continue;
+    const box = el('div', 'opp' + (p.id === g.turn ? ' turn' : ''));
+    box.innerHTML = `<div class="hd"><span>${esc(p.name)}${p.bot ? ' 🤖' : ''}</span><small>✋${p.handCount} · 🏦$${p.bankTotal}M · ${p.sets}/3 sets</small></div>`;
+    const bank = el('div', 'bank');
+    p.bank.slice().sort((a, b) => b.value - a.value).forEach((c) => bank.appendChild(cardEl(c, { size: 'mini' })));
+    if (p.bank.length) box.appendChild(bank);
+    const z = el('div', 'zone');
+    Object.keys(p.groups).forEach((col) => z.appendChild(groupEl(p, col, { size: 'mini' })));
+    box.appendChild(z);
+    opps.appendChild(box);
+  }
+  game.appendChild(opps);
+
+  // middle: board + log
+  const mid = el('div', 'mid');
+  const board = el('div', 'board');
+  const cr = el('div', 'center-row');
+  const deck = el('div', 'pile'); deck.innerHTML = `<div class="deck-back">${g.deck}</div>Draw pile`;
+  const disc = el('div', 'pile');
+  if (g.discard.top) disc.appendChild(cardEl(g.discard.top, { size: 'small' })); else disc.appendChild(el('div', 'deck-back', ''));
+  disc.appendChild(el('div', '', `Discard (${g.discard.count})`));
+  cr.append(deck, disc);
+  if (g.stage === 'discard' && myTurn()) cr.appendChild(el('div', 'banner', `Too many cards — discard ${me().handCount - 7}`));
+  else if (g.stage === 'play' && myTurn() && g.playsLeft === 0) {
+    const b = el('button', 'primary', 'End turn'); b.onclick = () => play({ t: 'end' }); cr.appendChild(b);
+  }
+  board.appendChild(cr);
+
+  const my = me();
+  const box = el('div', 'mybox' + (myTurn() ? ' turn' : ''));
+  box.innerHTML = `<div class="hd row" style="justify-content:space-between"><b>${esc(my.name)} (you)</b><span class="dim">🏦$${my.bankTotal}M · ${my.sets}/3 sets</span></div><div class="zone-title">Bank</div>`;
+  const bank = el('div', 'bank');
+  my.bank.slice().sort((a, b) => b.value - a.value).forEach((c) => bank.appendChild(cardEl(c, { size: 'small' })));
+  if (!my.bank.length) bank.appendChild(el('span', 'dim', 'empty'));
+  box.appendChild(bank);
+  box.appendChild(el('div', 'zone-title', 'Properties'));
+  const z = el('div', 'zone');
+  Object.keys(my.groups).forEach((col) => z.appendChild(groupEl(my, col, { onCard: canAct() ? onMyTableCard : null })));
+  if (!Object.keys(my.groups).length) z.appendChild(el('span', 'dim', 'none yet'));
+  box.appendChild(z);
+  board.appendChild(box);
+  mid.appendChild(board);
+
+  const log = el('div', 'log');
+  g.log.slice().reverse().forEach((l) => log.appendChild(el('div', l.startsWith('—') ? 'hd' : '', esc(l))));
+  mid.appendChild(log);
+  game.appendChild(mid);
+
+  // hand
+  const hw = el('div', 'handwrap');
+  const hh = el('div', 'hand-hd');
+  hh.innerHTML = `<b>Your hand (${g.hand.length})</b>`;
+  if (canAct()) {
+    const info = el('span', 'dim', `Plays left: ${g.playsLeft}/3`);
+    const end = el('button', g.playsLeft === 0 ? 'primary' : '', 'End turn'); end.onclick = () => play({ t: 'end' });
+    const r = el('div', 'row'); r.append(info, end); hh.appendChild(r);
+  }
+  hw.appendChild(hh);
+  const hand = el('div', 'hand');
+  const discarding = g.stage === 'discard' && myTurn();
+  if (!discarding) ui.discSel.clear();
+  g.hand.forEach((c) => {
+    const sel = ui.discSel.has(c.id);
+    hand.appendChild(cardEl(c, {
+      both: true, sel,
+      onClick: discarding ? () => { sel ? ui.discSel.delete(c.id) : ui.discSel.add(c.id); render(); } : () => onHandCard(c),
+    }));
+  });
+  if (!g.hand.length) hand.appendChild(el('span', 'dim', 'Your hand is empty — you will draw 5 next turn.'));
+  hw.appendChild(hand);
+  if (discarding) {
+    const need = g.hand.length - 7;
+    const b = el('button', 'primary', `Discard ${ui.discSel.size}/${need} selected`);
+    b.disabled = ui.discSel.size !== need;
+    b.onclick = () => { play({ t: 'discard', cards: [...ui.discSel] }); ui.discSel.clear(); };
+    hw.appendChild(b);
+  }
+  game.appendChild(hw);
+
+  handlePrompt();
+}
+
+function statusText() {
+  const g = G();
+  if (g.winner) { const w = player(g.winner); return `🏆 ${esc(w.name)} wins!`; }
+  const p = g.pend;
+  if (g.stage === 'jsn') {
+    const r = player(p.responder);
+    return p.responder === S.you ? '⚠️ Respond to the action against you' : `Waiting for ${esc(r.name)} to decide on Just Say No…`;
+  }
+  if (g.stage === 'pay') return p.payer === S.you ? `💸 You owe $${p.amount}M` : `Waiting for ${esc(player(p.payer).name)} to pay $${p.amount}M…`;
+  if (g.stage === 'discard') return myTurn() ? 'Discard down to 7 cards' : `${esc(player(g.turn).name)} is discarding…`;
+  return myTurn() ? '✨ Your turn' : `${esc(player(g.turn).name)}'s turn`;
+}
+
+// ---------------------------------------------------------------- modals
+function openModal(title, sub, build, buttons, opts = {}) {
+  const m = $('#modal');
+  m.innerHTML = '';
+  const d = el('div', 'dlg');
+  d.appendChild(el('h3', '', title));
+  if (sub) d.appendChild(el('div', 'sub', sub));
+  const body = el('div'); d.appendChild(body);
+  if (build) build(body);
+  const bt = el('div', 'btns');
+  (buttons || []).forEach((b) => {
+    const e = el('button', b.cls || '', b.label);
+    if (b.disabled) e.disabled = true;
+    e.onclick = b.onClick; bt.appendChild(e);
+  });
+  d.appendChild(bt);
+  m.appendChild(d);
+  m.classList.add('open');
+  m.onclick = opts.locked ? null : (ev) => { if (ev.target === m) closeModal(); };
+  ui.userModal = !opts.locked;
+  return { body, bt };
+}
+function closeModal() { $('#modal').classList.remove('open'); $('#modal').innerHTML = ''; ui.modalKey = null; ui.userModal = false; }
+const cancelBtn = { label: 'Cancel', onClick: () => closeModal() };
+
+// Prompts the server requires us to answer (Just Say No, payment) are derived from state.
+function handlePrompt() {
+  const g = G();
+  const p = g.pend;
+  let key = null;
+  if (g.stage === 'jsn' && p.responder === S.you) key = `jsn:${p.actor}:${p.cur}:${p.cancelled}:${g.seq}`;
+  else if (g.stage === 'pay' && p.payer === S.you) key = `pay:${p.amount}:${g.seq}`;
+  else if (g.winner) key = 'win';
+
+  if (!key) {
+    if (ui.modalKey) closeModal();
+    else if (ui.userModal && !canAct()) closeModal();
+    return;
+  }
+  if (key === ui.modalKey) return;
+  if (ui.modalKey && !key.startsWith(ui.modalKey.split(':')[0])) ui.paySel.clear();
+  ui.modalKey = key;
+  if (key === 'win') showWin();
+  else if (key.startsWith('jsn')) showJsn();
+  else showPay();
+  ui.modalKey = key; // openModal may have cleared it
+}
+
+function effectText() {
+  const p = G().pend, e = p.eff, a = player(p.actor);
+  const tgt = player(p.cur);
+  const who = p.responder === S.you && p.responder === p.actor ? `${tgt.name} played Just Say No on your ${e.t} action.` : '';
+  switch (e.t) {
+    case 'rent': return `${a.name} charges you $${e.amount}M rent (${cname(e.color)}).`;
+    case 'debt': return `${a.name} demands $5M from you (Debt Collector).`;
+    case 'bday': return `It's ${a.name}'s birthday — pay $2M.`;
+    case 'dealbreaker': return `${a.name} wants to steal ${player(p.cur).name}'s ${cname(e.color)} set (Deal Breaker).`;
+    case 'sly': return `${a.name} wants to steal a ${e.theirs.kind === 'prop' ? cname(e.theirs.as) : 'wild'} property from ${tgt.name} (Sly Deal).`;
+    case 'forced': return `${a.name} wants to swap a property with ${tgt.name} (Forced Deal).`;
+  }
+  return who;
+}
+
+function showJsn() {
+  const g = G(), p = g.pend;
+  const iAmActor = p.responder === p.actor;
+  const sub = iAmActor
+    ? `${player(p.cur).name} played Just Say No! Your action is ${p.cancelled ? 'currently cancelled' : 'back on'}.`
+    : effectText();
+  const mine = g.hand.filter((c) => c.act === 'jsn');
+  openModal(iAmActor ? 'Counter with Just Say No?' : 'Just Say No?', sub, (body) => {
+    const w = el('div', 'choices');
+    mine.slice(0, 1).forEach((c) => w.appendChild(cardEl(c, { size: 'small' })));
+    body.appendChild(w);
+  }, [
+    { label: iAmActor ? 'Let it stand' : (g.pend.eff.t === 'rent' || g.pend.eff.t === 'debt' || g.pend.eff.t === 'bday' ? 'Accept & pay' : 'Accept'), onClick: () => play({ t: 'jsn', use: false }) },
+    { label: '🚫 Just Say No!', cls: 'danger', onClick: () => play({ t: 'jsn', use: true }) },
+  ], { locked: true });
+}
+
+function showPay() {
+  const g = G(), p = g.pend, my = me();
+  if (!ui.paySel.size && g.suggest) g.suggest.forEach((id) => ui.paySel.add(id));
+  const assets = [...my.bank.map((c) => ({ c, from: 'Bank' })), ...Object.values(my.groups).flatMap((gr) => gr.cards.map((c) => ({ c, from: 'Property' })))];
+  const sumSel = () => assets.filter((a) => ui.paySel.has(a.c.id)).reduce((s, a) => s + a.c.value, 0);
+  let paint;
+  const dlg = openModal(`Pay $${p.amount}M`, `${effectText()} Pick cards worth at least $${p.amount}M — no change is given.`, (body) => {
+    const w = el('div', 'choices');
+    body.appendChild(w);
+    paint = () => {
+      w.innerHTML = '';
+      assets.forEach((a) => {
+        const on = ui.paySel.has(a.c.id);
+        const ch = el('div', 'choice' + (on ? ' on' : ''));
+        ch.appendChild(cardEl(a.c, { size: 'small' }));
+        ch.appendChild(el('div', 'who', a.from));
+        ch.onclick = () => { on ? ui.paySel.delete(a.c.id) : ui.paySel.add(a.c.id); paint(); update(); };
+        w.appendChild(ch);
+      });
+    };
+    paint();
+  }, [], { locked: true });
+  const total = el('span', 'dim'); total.style.marginRight = 'auto';
+  const pay = el('button', 'primary', 'Pay');
+  const auto = el('button', '', 'Auto-select');
+  auto.onclick = () => { ui.paySel = new Set(g.suggest); paint(); update(); };
+  pay.onclick = () => { play({ t: 'pay', cards: [...ui.paySel] }); ui.paySel.clear(); };
+  dlg.bt.append(total, auto, pay);
+  function update() {
+    const s = sumSel();
+    total.textContent = `Selected $${s}M of $${p.amount}M`;
+    pay.disabled = !(s >= p.amount || (ui.paySel.size === assets.length));
+  }
+  update();
+}
+
+function showWin() {
+  const g = G(), w = player(g.winner);
+  const isHost = S.host === S.you;
+  openModal(g.winner === S.you ? '🏆 You win!' : `🏆 ${w.name} wins!`, `${w.name} completed 3 property sets.`, (body) => {
+    const z = el('div', 'zone');
+    Object.keys(w.groups).filter((c) => complete(w, c)).forEach((c) => z.appendChild(groupEl(w, c)));
+    body.appendChild(z);
+  }, [
+    isHost ? { label: 'Back to lobby (play again)', cls: 'primary', onClick: () => send({ t: 'lobby' }) } : { label: 'Waiting for host…', disabled: true },
+    { label: 'Leave', onClick: () => send({ t: 'leave' }) },
+  ], { locked: true });
+}
+
+// ---------------------------------------------------------------- playing cards
+function onMyTableCard(c, col) {
+  if (c.kind !== 'wild') return;
+  const opts = c.colors.filter((x) => x !== col);
+  openModal('Move wild card', 'Free move: change which color this wild card counts as.', (body) => {
+    const w = el('div', 'choices');
+    opts.forEach((x) => {
+      const ch = el('div', 'choice', `<span><span class="chip" style="background:${COL(x)}"></span>${esc(cname(x))}</span>`);
+      ch.onclick = () => { closeModal(); play({ t: 'move', card: c.id, color: x }); };
+      w.appendChild(ch);
+    });
+    body.appendChild(w);
+  }, [cancelBtn]);
+}
+
+function choiceCard(card, label, onClick, size = 'small') {
+  const ch = el('div', 'choice');
+  ch.appendChild(cardEl(card, { size }));
+  if (label) ch.appendChild(el('div', 'who', label));
+  ch.onclick = onClick;
+  return ch;
+}
+
+function onHandCard(c) {
+  const g = G();
+  const bankBtn = { label: `Bank as $${c.value}M`, onClick: () => { closeModal(); play({ t: 'bank', card: c.id }); } };
+  const sub = c.kind === 'action' ? ACT[c.act][1] : c.kind === 'rent' ? (c.wildRent ? 'Charge one player rent for any color you own.' : 'Charge all players rent for one of these colors.') : '';
+  const title = c.kind === 'money' ? `$${c.value}M` : c.name === 'Wild' ? 'Wild property' : c.name;
+  const showCard = (body) => { const w = el('div', 'choices'); w.appendChild(cardEl(c, { size: 'big-card', both: true })); body.appendChild(w); };
+
+  if (!canAct()) return openModal(title, sub || (g.stage === 'discard' ? '' : "You can play cards on your turn."), showCard, [{ label: 'Close', onClick: closeModal }]);
+  if (g.playsLeft < 1) return openModal(title, 'No plays left this turn — end your turn.', showCard, [{ label: 'Close', onClick: closeModal }]);
+
+  const opps = g.players.filter((p) => p.id !== S.you);
+  const my = me();
+  const stealable = (p) => Object.entries(p.groups).filter(([col]) => !complete(p, col)).flatMap(([col, gr]) => gr.cards);
+
+  if (c.kind === 'money') return openModal(title, 'Money can only go in your bank.', showCard, [cancelBtn, { ...bankBtn, cls: 'primary' }]);
+
+  if (c.kind === 'prop') return openModal(title, `Place on your table in the ${cname(c.colors[0])} set.`, showCard,
+    [cancelBtn, { label: 'Play to table', cls: 'primary', onClick: () => { closeModal(); play({ t: 'prop', card: c.id, color: c.colors[0] }); } }]);
+
+  if (c.kind === 'wild') return openModal(title, 'Choose which color this wild card counts as. You can move it later for free.', (body) => {
+    showCard(body);
+    const w = el('div', 'choices');
+    c.colors.forEach((x) => {
+      const g2 = my.groups[x];
+      const ch = el('div', 'choice', `<span><span class="chip" style="background:${COL(x)}"></span>${esc(cname(x))}</span><span class="who">${g2 ? g2.cards.length : 0}/${size(x)} owned</span>`);
+      ch.onclick = () => { closeModal(); play({ t: 'prop', card: c.id, color: x }); };
+      w.appendChild(ch);
+    });
+    body.appendChild(w);
+  }, [cancelBtn]);
+
+  if (c.kind === 'rent') return rentDialog(c);
+
+  // action cards
+  const send1 = (extra) => { closeModal(); play({ t: 'act', card: c.id, ...extra }); };
+  switch (c.act) {
+    case 'passgo':
+      return openModal(title, sub, showCard, [cancelBtn, bankBtn, { label: 'Play (draw 2)', cls: 'primary', onClick: () => send1({}) }]);
+    case 'bday':
+      return openModal(title, sub, showCard, [cancelBtn, bankBtn, { label: 'Play', cls: 'primary', onClick: () => send1({}) }]);
+    case 'jsn': case 'dblrent':
+      return openModal(title, c.act === 'jsn' ? 'Play this in response to an action against you (you\'ll be asked). It can only be banked on your turn.' : 'Play this together with a Rent card (choose it from the Rent card). Otherwise bank it.', showCard, [cancelBtn, bankBtn]);
+    case 'debt':
+      return openModal(title, 'Pick who pays you $5M.', (body) => {
+        const w = el('div', 'choices');
+        opps.forEach((p) => { const ch = el('div', 'choice', `<b>${esc(p.name)}</b><span class="who">assets ~$${assetSum(p)}M</span>`); ch.onclick = () => send1({ target: p.id }); w.appendChild(ch); });
+        body.appendChild(w);
+      }, [cancelBtn, bankBtn]);
+    case 'dealbreaker':
+      return openModal(title, 'Pick a complete set to steal.', (body) => {
+        const w = el('div', 'choices'); let any = false;
+        opps.forEach((p) => Object.keys(p.groups).filter((col) => complete(p, col)).forEach((col) => {
+          any = true;
+          const ch = el('div', 'choice'); ch.appendChild(groupEl(p, col));
+          ch.appendChild(el('div', 'who', `${esc(p.name)}'s ${esc(cname(col))}`));
+          ch.onclick = () => send1({ target: p.id, color: col }); w.appendChild(ch);
+        }));
+        body.appendChild(any ? w : el('div', 'dim', 'Nobody has a complete set yet.'));
+      }, [cancelBtn, bankBtn]);
+    case 'sly':
+      return openModal(title, 'Pick a property to steal (not from a complete set).', (body) => {
+        const w = el('div', 'choices'); let any = false;
+        opps.forEach((p) => stealable(p).forEach((card) => { any = true; w.appendChild(choiceCard(card, p.name, () => send1({ target: p.id, theirs: card.id }))); }));
+        body.appendChild(any ? w : el('div', 'dim', 'No stealable properties right now.'));
+      }, [cancelBtn, bankBtn]);
+    case 'forced':
+      return forcedDialog(c, opps, stealable, bankBtn);
+    case 'house': case 'hotel': {
+      const isHouse = c.act === 'house';
+      const opts = Object.keys(my.groups).filter((col) => col !== 'rr' && col !== 'util' && complete(my, col) &&
+        (isHouse ? !my.groups[col].house : my.groups[col].house && !my.groups[col].hotel));
+      return openModal(title, isHouse ? 'Add a house to a complete set (not Railroad/Utility).' : 'Add a hotel to a set that already has a house.', (body) => {
+        const w = el('div', 'choices');
+        opts.forEach((col) => { const ch = el('div', 'choice'); ch.appendChild(groupEl(my, col)); ch.appendChild(el('div', 'who', esc(cname(col)))); ch.onclick = () => send1({ color: col }); w.appendChild(ch); });
+        body.appendChild(opts.length ? w : el('div', 'dim', isHouse ? 'You need a complete set without a house.' : 'You need a set with a house and no hotel.'));
+      }, [cancelBtn, bankBtn]);
+    }
+  }
+}
+const assetSum = (p) => p.bankTotal + Object.values(p.groups).flatMap((g) => g.cards).reduce((s, c) => s + c.value, 0);
+
+function forcedDialog(c, opps, stealable, bankBtn) {
+  const my = me();
+  const mineList = Object.entries(my.groups).filter(([col]) => !complete(my, col)).flatMap(([, gr]) => gr.cards);
+  const st = { mine: null, target: null, theirs: null };
+  openModal('Forced Deal', 'Choose one of your properties, then one of theirs to swap.', (body) => {
+    const mineBox = el('div'); const theirsBox = el('div');
+    body.append(el('div', 'zone-title', 'Your property'), mineBox, el('div', 'zone-title', 'Their property'), theirsBox);
+    const paint = () => {
+      mineBox.innerHTML = ''; theirsBox.innerHTML = '';
+      const w1 = el('div', 'choices');
+      mineList.forEach((card) => { const ch = choiceCard(card, '', () => { st.mine = card.id; paint(); }); if (st.mine === card.id) ch.classList.add('on'); w1.appendChild(ch); });
+      mineBox.appendChild(mineList.length ? w1 : el('div', 'dim', 'You have no swappable properties.'));
+      const w2 = el('div', 'choices'); let any = false;
+      opps.forEach((p) => stealable(p).forEach((card) => { any = true; const ch = choiceCard(card, p.name, () => { st.target = p.id; st.theirs = card.id; paint(); }); if (st.theirs === card.id) ch.classList.add('on'); w2.appendChild(ch); }));
+      theirsBox.appendChild(any ? w2 : el('div', 'dim', 'No swappable properties on their side.'));
+      go.disabled = !(st.mine && st.theirs);
+    };
+    const go = el('button', 'primary', 'Swap');
+    go.onclick = () => { closeModal(); play({ t: 'act', card: c.id, mine: st.mine, target: st.target, theirs: st.theirs }); };
+    setTimeout(() => { $('#modal .btns').appendChild(go); paint(); });
+  }, [cancelBtn, bankBtn]);
+}
+
+function rentDialog(c) {
+  const g = G(), my = me();
+  const doubles = g.hand.filter((x) => x.act === 'dblrent');
+  const opps = g.players.filter((p) => p.id !== S.you);
+  const cols = c.colors.filter((col) => rentNow(my, col) > 0);
+  const st = { col: null, target: opps.length === 1 ? opps[0].id : null, dbl: 0 };
+  if (cols.length === 1) st.col = cols[0];
+  const maxDbl = Math.min(doubles.length, g.playsLeft - 1);
+  const bank = { label: `Bank as $${c.value}M`, onClick: () => { closeModal(); play({ t: 'bank', card: c.id }); } };
+  const dlg = openModal(c.name, c.wildRent ? 'Charge ONE player rent for a color you own.' : 'Charge ALL players rent for one of these colors.', (body) => {
+    const colBox = el('div'), tgtBox = el('div'), dblBox = el('div');
+    body.append(colBox, tgtBox, dblBox);
+    const paint = () => {
+      colBox.innerHTML = '<div class="zone-title">Color</div>';
+      const w = el('div', 'choices');
+      cols.forEach((col) => {
+        const ch = el('div', 'choice' + (st.col === col ? ' on' : ''), `<span><span class="chip" style="background:${COL(col)}"></span>${esc(cname(col))}</span><b>$${rentNow(my, col)}M</b>`);
+        ch.onclick = () => { st.col = col; paint(); };
+        w.appendChild(ch);
+      });
+      colBox.appendChild(cols.length ? w : el('div', 'dim', 'You own no properties this card can charge for — bank it instead.'));
+      tgtBox.innerHTML = '';
+      if (c.wildRent) {
+        tgtBox.appendChild(el('div', 'zone-title', 'Charge'));
+        const w2 = el('div', 'choices');
+        opps.forEach((p) => { const ch = el('div', 'choice' + (st.target === p.id ? ' on' : ''), `<b>${esc(p.name)}</b><span class="who">assets ~$${assetSum(p)}M</span>`); ch.onclick = () => { st.target = p.id; paint(); }; w2.appendChild(ch); });
+        tgtBox.appendChild(w2);
+      }
+      dblBox.innerHTML = '';
+      if (maxDbl > 0) {
+        dblBox.appendChild(el('div', 'zone-title', 'Double The Rent (each costs 1 play)'));
+        const w3 = el('div', 'choices');
+        for (let n = 0; n <= maxDbl; n++) {
+          const ch = el('div', 'choice' + (st.dbl === n ? ' on' : ''), n === 0 ? 'None' : `×${2 ** n}`); ch.onclick = () => { st.dbl = n; paint(); }; w3.appendChild(ch);
+        }
+        dblBox.appendChild(w3);
+      }
+      const amt = st.col ? rentNow(my, st.col) * 2 ** st.dbl : 0;
+      go.textContent = amt ? `Charge $${amt}M` : 'Charge rent';
+      go.disabled = !st.col || (c.wildRent && !st.target);
+    };
+    const go = el('button', 'primary', 'Charge rent');
+    go.onclick = () => { closeModal(); play({ t: 'rent', card: c.id, color: st.col, target: st.target, doubles: doubles.slice(0, st.dbl).map((d) => d.id) }); };
+    setTimeout(() => { $('#modal .btns').appendChild(go); paint(); });
+  }, [cancelBtn, bank]);
+}
+
+connect();
+</script>
+</body>
+</html>
