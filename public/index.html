@@ -33,6 +33,10 @@ h1, h2, h3 { margin: 0; }
 /* game layout */
 #game { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; }
 .top { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
+.clock { font-variant-numeric: tabular-nums; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--panel2); border: 1px solid var(--line); margin-left: 8px; white-space: nowrap; }
+.clock.mine { border-color: var(--accent); color: var(--accent); }
+.clock.low { border-color: var(--danger); color: var(--danger); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
 .status { font-weight: 600; }
 .status.mine { color: var(--accent); }
 .opps { display: flex; gap: 10px; padding: 10px; overflow-x: auto; }
@@ -229,7 +233,7 @@ function toast(msg) {
 
 // ---------------------------------------------------------------- connection
 let ws, S = null, roomInfo = null, connecting = false;
-const ui = { modalKey: null, userModal: false, paySel: new Set(), discSel: new Set() };
+const ui = { clockEnd: null, clockFor: null, modalKey: null, userModal: false, paySel: new Set(), discSel: new Set() };
 
 function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
@@ -252,7 +256,14 @@ function onMsg(m) {
   else if (m.t === 'joined') { safeSet('deal-session', JSON.stringify({ code: m.code, token: m.token })); }
   else if (m.t === 'gone') { safeSet('deal-session', null); S = null; closeModal(); renderHome(); }
   else if (m.t === 'error') toast(m.msg);
-  else if (m.t === 'state') { S = m; render(); }
+  else if (m.t === 'state') {
+    S = m;
+    const g = m.game;
+    ui.clockFor = g && g.timerFor;
+    ui.clockEnd = g && g.timeLeft != null ? performance.now() + g.timeLeft : null;
+    render();
+    tickClock();
+  }
 }
 
 // ---------------------------------------------------------------- screens
@@ -363,6 +374,7 @@ function renderGame() {
   const top = el('div', 'top');
   const st = el('div', 'status' + (myTurn() ? ' mine' : ''));
   st.innerHTML = statusText();
+  st.appendChild(el('span', 'clock'));
   const right = el('div', 'row');
   right.innerHTML = `<span class="dim">Room ${S.code}</span>`;
   const lv = el('button', '', 'Leave'); lv.onclick = () => { if (confirm('Leave the game? A bot will take your seat.')) send({ t: 'leave' }); };
@@ -473,7 +485,9 @@ function openModal(title, sub, build, buttons, opts = {}) {
   const m = $('#modal');
   m.innerHTML = '';
   const d = el('div', 'dlg');
-  d.appendChild(el('h3', '', title));
+  const h = el('h3', '', esc(title));
+  if (opts.locked) h.appendChild(el('span', 'clock'));
+  d.appendChild(h);
   if (sub) d.appendChild(el('div', 'sub', sub));
   const body = el('div'); d.appendChild(body);
   if (build) build(body);
@@ -770,6 +784,20 @@ function rentDialog(c) {
     setTimeout(() => { $('#modal .btns').appendChild(go); paint(); });
   }, [cancelBtn, bank]);
 }
+
+// Countdown shown next to the status text and inside reaction dialogs.
+function tickClock() {
+  const secs = ui.clockEnd == null || !ui.clockFor ? null : Math.max(0, Math.ceil((ui.clockEnd - performance.now()) / 1000));
+  document.querySelectorAll('.clock').forEach((c) => {
+    if (secs == null) { c.style.display = 'none'; return; }
+    c.style.display = '';
+    const mine = ui.clockFor === S.you;
+    c.textContent = `⏱ ${secs}s${mine ? '' : ' · ' + (S.game.players.find((p) => p.id === ui.clockFor) || {}).name}`;
+    c.classList.toggle('mine', mine);
+    c.classList.toggle('low', mine && secs <= 10);
+  });
+}
+setInterval(tickClock, 250);
 
 connect();
 </script>

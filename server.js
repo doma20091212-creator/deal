@@ -65,8 +65,25 @@ function scheduleBots(room) {
     const who = room.game.P(room.game.pendingActor());
     if (who && who.bot) botAct(room.game, who);
     broadcast(room);
-    scheduleBots(room);
+    schedule(room);
   }, 900 + Math.random() * 600);
+}
+
+function scheduleTimer(room) {
+  clearTimeout(room.turnTimer);
+  const g = room.game;
+  if (!g || g.stage === 'over' || !g.deadline) return;
+  const actor = g.P(g.pendingActor());
+  if (!actor || actor.bot) return;
+  room.turnTimer = setTimeout(() => {
+    if (room.game !== g) return;
+    if (g.expire()) { broadcast(room); schedule(room); } else scheduleTimer(room);
+  }, Math.max(0, g.deadline - Date.now()) + 50);
+}
+
+function schedule(room) {
+  scheduleBots(room);
+  scheduleTimer(room);
 }
 
 function removeRoomLater(room) {
@@ -74,6 +91,7 @@ function removeRoomLater(room) {
   room.emptyTimer = setTimeout(() => {
     if (room.players.every((p) => p.bot || !p.connected)) {
       clearTimeout(room.botTimer);
+      clearTimeout(room.turnTimer);
       rooms.delete(room.code);
     }
   }, EMPTY_ROOM_MS);
@@ -90,7 +108,7 @@ function onDrop(room, p) {
       p.autoBot = true;
       const gp = room.game.P(p.id);
       if (gp) gp.bot = true;
-      scheduleBots(room);
+      schedule(room);
     } else {
       room.players.splice(room.players.indexOf(p), 1);
       if (room.hostId === p.id) {
@@ -137,7 +155,7 @@ function handle(ws, m) {
 
   if (m.t === 'create') {
     if (ws.ctx) return err('Already in a room.');
-    const room = { code: makeCode(), players: [], hostId: null, game: null, botTimer: null, emptyTimer: null };
+    const room = { code: makeCode(), players: [], hostId: null, game: null, botTimer: null, turnTimer: null, emptyTimer: null };
     rooms.set(room.code, room);
     const p = addPlayer(room, { name: cleanName(m.name), ws });
     room.hostId = p.id;
@@ -190,12 +208,13 @@ function handle(ws, m) {
       if (room.players.length < 2) return err('You need at least 2 players — add a bot!');
       room.game = new Game(room.players.map((p) => ({ id: p.id, name: p.name, bot: p.bot })));
       broadcast(room);
-      return scheduleBots(room);
+      return schedule(room);
     }
     case 'lobby': {
       if (!isHost || !room.game || room.game.stage !== 'over') return;
       room.game = null;
       clearTimeout(room.botTimer); room.botTimer = null;
+      clearTimeout(room.turnTimer);
       room.players = room.players.filter((p) => p.bot || p.connected);
       return broadcast(room);
     }
@@ -211,17 +230,17 @@ function handle(ws, m) {
         const next = room.players.find((p) => !p.bot);
         if (next) room.hostId = next.id;
       }
-      if (!room.players.some((p) => !p.bot)) { clearTimeout(room.botTimer); rooms.delete(room.code); }
+      if (!room.players.some((p) => !p.bot)) { clearTimeout(room.botTimer); clearTimeout(room.turnTimer); rooms.delete(room.code); }
       send(ws, { t: 'gone' });
       broadcast(room);
-      return scheduleBots(room);
+      return schedule(room);
     }
     case 'g': {
       if (!room.game) return;
       const r = room.game.act(player.id, m.m);
       if (r.error) return err(r.error);
       broadcast(room);
-      return scheduleBots(room);
+      return schedule(room);
     }
   }
 }

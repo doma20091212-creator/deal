@@ -31,6 +31,10 @@ const MAX_HAND = 7;
 const PLAYS_PER_TURN = 3;
 const PLAYERS_PER_DECK = 5; // every 5 players (or part of 5) adds another full deck
 const MAX_PLAYERS = 10;
+const TURN_MS = 40_000; // time to take a turn
+const REACT_MS = 40_000; // time to answer Just Say No / pay a debt
+const DISCARD_MS = 20_000; // time to discard down to the hand limit
+const MIN_RESUME_MS = 10_000; // a turn resumed after reactions always gets at least this long
 
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
@@ -80,6 +84,8 @@ class Game {
     this.discard = [];
     this.log = [];
     this.seq = 0;
+    this.saved = null; // turn time left while someone else reacts
+    this.deadline = null;
     this.pend = null;
     this.winner = null;
     this.stage = 'play';
@@ -92,6 +98,7 @@ class Game {
   // ---------- small helpers ----------
   P(id) { return this.players.find((p) => p.id === id); }
   cur() { return this.players[this.turn]; }
+  setDeadline(ms) { this.deadline = Date.now() + ms; }
   say(msg) { this.seq++; this.log.push(msg); if (this.log.length > 80) this.log.shift(); }
   others(p) { return this.players.filter((o) => o !== p); }
 
@@ -192,6 +199,7 @@ class Game {
       if (this.completeCount(p) >= WIN_SETS) {
         this.winner = p.id;
         this.stage = 'over';
+        this.deadline = null;
         this.pend = null;
         this.say(`${p.name} wins with ${WIN_SETS} complete sets!`);
         return true;
@@ -207,11 +215,27 @@ class Game {
     return null;
   }
 
+  // Called by the server when the deadline passes: does the least harmful default for whoever is on the clock.
+  expire() {
+    if (this.stage === 'over' || !this.deadline || Date.now() < this.deadline) return false;
+    const p = this.P(this.pendingActor());
+    this.say(`${p.name} ran out of time.`);
+    if (this.stage === 'jsn') this.act(p.id, { t: 'jsn', use: false });
+    else if (this.stage === 'pay') this.act(p.id, { t: 'pay', cards: this.suggestPay(p, this.pend.amount) });
+    else {
+      if (this.stage === 'play') this.act(p.id, { t: 'end' });
+      if (this.stage === 'discard') this.act(p.id, { t: 'discard', cards: autoDiscardIds(p) });
+    }
+    return true;
+  }
+
   // ---------- turn flow ----------
   startTurn() {
     const p = this.cur();
     this.playsLeft = PLAYS_PER_TURN;
     this.stage = 'play';
+    this.saved = null;
+    this.setDeadline(TURN_MS);
     const n = p.hand.length === 0 ? 5 : 2;
     this.draw(p, n);
     this.say(`— ${p.name}'s turn (drew ${n}) —`);
@@ -238,7 +262,7 @@ class Game {
     if (this.stage !== 'play') return fail('Not now.');
     if (this.cur() !== p) return fail('Not your turn.');
     if (m.t === 'end') {
-      if (p.hand.length > MAX_HAND) { this.stage = 'discard'; return { ok: true }; }
+      if (p.hand.length > MAX_HAND) { this.stage = 'discard'; this.setDeadline(DISCARD_MS); return { ok: true }; }
       this.nextTurn();
       return { ok: true };
     }
@@ -395,6 +419,7 @@ class Game {
 
   // ---------- effects: Just Say No window, then resolution ----------
   beginEffect(actor, eff, targets) {
+    this.saved = Math.max(0, this.deadline - Date.now());
     this.pend = { actor: actor.id, eff, queue: targets.map((t) => t.id), cur: null, cancelled: false, responder: null, payer: null, amount: 0 };
     this.nextTarget();
   }
@@ -405,6 +430,8 @@ class Game {
     if (!pd.queue.length) {
       this.pend = null;
       this.stage = 'play';
+      this.setDeadline(Math.max(this.saved ?? TURN_MS, MIN_RESUME_MS));
+      this.saved = null;
       this.checkWin();
       return;
     }
@@ -413,6 +440,7 @@ class Game {
     pd.responder = pd.cur;
     pd.payer = null;
     this.stage = 'jsn';
+    this.setDeadline(REACT_MS);
     this.autoJsn();
   }
 
@@ -432,6 +460,7 @@ class Game {
     this.toDiscard(card);
     pd.cancelled = !pd.cancelled;
     pd.responder = pd.responder === pd.cur ? pd.actor : pd.cur;
+    this.setDeadline(REACT_MS);
     this.say(`${p.name} plays Just Say No!`);
     this.autoJsn();
     return { ok: true };
@@ -503,6 +532,7 @@ class Game {
     this.stage = 'pay';
     this.pend.payer = tgt.id;
     this.pend.amount = amount;
+    this.setDeadline(REACT_MS);
   }
 
   actPay(p, m) {
@@ -559,9 +589,12 @@ class Game {
   view(pid) {
     const pd = this.pend;
     const me = this.P(pid);
+    const actor = this.stage === 'over' ? null : this.P(this.pendingActor());
     return {
       you: pid,
       turn: this.cur().id,
+      timerFor: actor && !actor.bot ? actor.id : null,
+      timeLeft: this.deadline ? Math.max(0, this.deadline - Date.now()) : null,
       stage: this.stage,
       playsLeft: this.playsLeft,
       deck: this.deck.length,
@@ -721,6 +754,11 @@ function botKeepScore(c) {
   return c.value + (c.kind === 'action' ? 2 : 0);
 }
 
+// The cards least worth keeping, enough to get back down to the hand limit.
+function autoDiscardIds(p) {
+  return p.hand.slice().sort((a, b) => botKeepScore(a) - botKeepScore(b)).slice(0, p.hand.length - MAX_HAND).map((c) => c.id);
+}
+
 const bigEffect = (eff) => ['dealbreaker', 'sly', 'forced'].includes(eff.t) || (eff.amount || 0) >= 3;
 
 // Performs exactly one decision for the bot; returns the engine result.
@@ -735,11 +773,8 @@ function botAct(g, p) {
     }
     case 'pay':
       return g.act(p.id, { t: 'pay', cards: g.suggestPay(p, g.pend.amount) });
-    case 'discard': {
-      const need = p.hand.length - MAX_HAND;
-      const ids = p.hand.slice().sort((a, b) => botKeepScore(a) - botKeepScore(b)).slice(0, need).map((c) => c.id);
-      return g.act(p.id, { t: 'discard', cards: ids });
-    }
+    case 'discard':
+      return g.act(p.id, { t: 'discard', cards: autoDiscardIds(p) });
     case 'play':
       r = g.act(p.id, botPlayMove(g, p));
       if (r.error) r = g.act(p.id, { t: 'end' });
@@ -748,4 +783,4 @@ function botAct(g, p) {
   return fail('Nothing to do.');
 }
 
-module.exports = { Game, botAct, COLORS, COLOR_NAME, SET_SIZE, RENT, ACTIONS, buildDeck, MAX_PLAYERS, PLAYERS_PER_DECK };
+module.exports = { Game, botAct, COLORS, COLOR_NAME, SET_SIZE, RENT, ACTIONS, buildDeck, MAX_PLAYERS, PLAYERS_PER_DECK, TURN_MS };
