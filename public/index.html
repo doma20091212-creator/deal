@@ -511,7 +511,10 @@ function statusText() {
   const p = g.pend;
   if (g.stage === 'jsn') {
     const r = player(p.responder);
-    return p.responder === S.you ? '⚠️ Respond to the action against you' : `Waiting for ${esc(r.name)} to decide on Just Say No…`;
+    if (p.responder === S.you) return '⚠️ Respond to the action against you';
+    // Don't reveal whether they hold a Just Say No: to everyone else this looks like a plain payment wait.
+    if (p.responder === p.cur && p.eff.amount) return `Waiting for ${esc(r.name)} to pay $${p.eff.amount}M…`;
+    return `Waiting for ${esc(r.name)} to respond…`;
   }
   if (g.stage === 'pay') return p.payer === S.you ? `💸 You owe $${p.amount}M` : `Waiting for ${esc(player(p.payer).name)} to pay $${p.amount}M…`;
   if (g.stage === 'discard') return myTurn() ? 'Discard down to 7 cards' : `${esc(player(g.turn).name)} is discarding…`;
