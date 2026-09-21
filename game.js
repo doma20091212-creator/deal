@@ -68,6 +68,7 @@ function addDeck(cards, nextId) {
 }
 
 const fail = (error) => ({ error });
+const bankSum = (p) => p.bank.reduce((s, c) => s + c.value, 0);
 const isProp = (c) => c.kind === 'prop' || c.kind === 'wild';
 const cardLabel = (c) => {
   if (c.kind === 'money') return c.name;
@@ -389,18 +390,11 @@ class Game {
     const doubles = [...new Set(m.doubles || [])].map((id) => p.hand.find((c) => c.id === id));
     if (doubles.length > 2 || doubles.some((c) => !c || c.act !== 'dblrent')) return fail('Invalid Double The Rent cards.');
     if (this.playsLeft < 1 + doubles.length) return fail("You don't have enough plays left for that.");
-    let targets;
-    if (card.wildRent) {
-      const t = m.target ? this.P(m.target) : null;
-      if (!t || t === p) return fail('Pick a player to charge.');
-      targets = [t];
-    } else {
-      targets = this.others(p);
-    }
+    const targets = this.others(p);
     const amount = base * 2 ** doubles.length;
     for (const c of [card, ...doubles]) { this.takeHand(p, c.id); this.toDiscard(c); }
     this.playsLeft -= 1 + doubles.length;
-    this.say(`${p.name} charges ${COLOR_NAME[m.color]} rent: $${amount}M${doubles.length ? ` (doubled ×${doubles.length})` : ''}${card.wildRent ? ` to ${targets[0].name}` : ' to everyone'}.`);
+    this.say(`${p.name} charges ${COLOR_NAME[m.color]} rent: $${amount}M${doubles.length ? ` (doubled ×${doubles.length})` : ''} to everyone.`);
     this.beginEffect(p, { t: 'rent', amount, color: m.color }, targets);
     return { ok: true };
   }
@@ -542,6 +536,10 @@ class Game {
     const chosen = ids.map((id) => pool.find((c) => c.id === id));
     if (!chosen.length || chosen.some((c) => !c)) return fail('Pick cards from your bank or properties.');
     const sum = chosen.reduce((s, c) => s + c.value, 0);
+    // Money first: properties only come into play once the whole bank has been spent.
+    if (chosen.some((c) => !p.bank.includes(c)) && (p.bank.some((c) => !chosen.includes(c)) || bankSum(p) >= this.pend.amount)) {
+      return fail('Pay with your bank money first — properties only if the bank is not enough.');
+    }
     if (sum < this.pend.amount && chosen.length < pool.length) return fail(`You still owe $${this.pend.amount - sum}M more.`);
     const actor = this.P(this.pend.actor);
     this.say(`${p.name} pays ${chosen.length} card${chosen.length === 1 ? '' : 's'} ($${sum}M) to ${actor.name}.`);
@@ -566,23 +564,29 @@ class Game {
     for (const col of touched) this.fixGroup(from, col);
   }
 
-  // Cheapest way for p to cover `amount`: min total "loss" subject to sum >= amount.
+  // Cheapest way for p to cover `amount`. Bank money always goes first; properties only cover the shortfall.
   suggestPay(p, amount) {
-    const items = [
-      ...p.bank.map((c) => ({ c, cost: c.value })),
-      ...this.allProps(p).map((c) => ({ c, cost: c.value + 4 + (this.isComplete(p, c.as) ? 30 : 0) })),
-    ].filter((it) => it.c.value > 0);
-    const dp = new Array(amount + 1).fill(Infinity);
-    const sel = new Array(amount + 1).fill(null);
-    dp[0] = 0; sel[0] = [];
-    items.forEach((it, i) => {
-      for (let s = amount; s >= 0; s--) {
-        if (dp[s] === Infinity) continue;
-        const t = Math.min(amount, s + it.c.value);
-        if (dp[s] + it.cost < dp[t]) { dp[t] = dp[s] + it.cost; sel[t] = sel[s].concat(i); }
-      }
-    });
-    return (sel[amount] || items.map((_, i) => i)).map((i) => items[i].c.id);
+    const bankIds = p.bank.filter((c) => c.value > 0).map((c) => c.id);
+    const short = amount - bankSum(p);
+    const cover = (items, need) => {
+      const dp = new Array(need + 1).fill(Infinity);
+      const sel = new Array(need + 1).fill(null);
+      dp[0] = 0; sel[0] = [];
+      items.forEach((it, i) => {
+        for (let s = need; s >= 0; s--) {
+          if (dp[s] === Infinity) continue;
+          const t = Math.min(need, s + it.c.value);
+          if (dp[s] + it.cost < dp[t]) { dp[t] = dp[s] + it.cost; sel[t] = sel[s].concat(i); }
+        }
+      });
+      return (sel[need] || items.map((_, i) => i)).map((i) => items[i].c.id);
+    };
+    if (short > 0) {
+      const props = this.allProps(p).filter((c) => c.value > 0)
+        .map((c) => ({ c, cost: c.value + 4 + (this.isComplete(p, c.as) ? 30 : 0) }));
+      return [...bankIds, ...cover(props, short)];
+    }
+    return cover(p.bank.filter((c) => c.value > 0).map((c) => ({ c, cost: c.value })), amount);
   }
 
   // ---------- what each client is allowed to see ----------
@@ -725,7 +729,6 @@ function botPlayMove(g, p) {
     const dbl = inHand((x) => x.act === 'dblrent').slice(0, Math.min(2, g.playsLeft - 1));
     const useDbl = bestRent.amount >= 3 ? dbl : [];
     const m = { t: 'rent', card: bestRent.c.id, color: bestRent.col, doubles: useDbl.map((c) => c.id) };
-    if (bestRent.c.wildRent) m.target = rich()[0].id;
     return m;
   }
 

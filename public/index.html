@@ -31,7 +31,7 @@ h1, h2, h3 { margin: 0; }
 .tag { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--line); color: var(--dim); margin-left: 6px; }
 
 /* game layout */
-#game { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; }
+#game { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; height: 100vh; }
 .top { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
 .clock { font-variant-numeric: tabular-nums; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--panel2); border: 1px solid var(--line); margin-left: 8px; white-space: nowrap; }
 .clock.mine { border-color: var(--accent); color: var(--accent); }
@@ -39,12 +39,12 @@ h1, h2, h3 { margin: 0; }
 @keyframes pulse { 50% { opacity: .45; } }
 .status { font-weight: 600; }
 .status.mine { color: var(--accent); }
-.opps { display: flex; gap: 10px; padding: 10px; overflow-x: auto; }
+.opps { display: flex; gap: 10px; padding: 10px; overflow: auto; max-height: 34vh; align-items: flex-start; }
 .opp { flex: 1; min-width: 210px; background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; }
 .opp.turn { border-color: var(--accent); }
 .opp .hd { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; gap: 6px; }
 .opp .hd small { color: var(--dim); font-weight: 400; }
-.mid { display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+.mid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr); min-height: 0; }
 .board { padding: 0 10px 10px; overflow-y: auto; }
 .center-row { display: flex; gap: 18px; align-items: center; justify-content: center; padding: 8px 0 14px; flex-wrap: wrap; }
 .pile { text-align: center; font-size: 12px; color: var(--dim); }
@@ -64,7 +64,7 @@ h1, h2, h3 { margin: 0; }
 .log div { padding: 3px 0; border-bottom: 1px dotted #2b3a4d; }
 .log .hd { color: var(--warn); font-weight: 600; }
 .handwrap { background: var(--panel); border-top: 1px solid var(--line); padding: 8px 10px 10px; }
-.hand { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px 4px; min-height: 148px; align-items: flex-end; }
+.hand { display: flex; gap: 8px; overflow-x: auto; padding: 12px 4px 4px; min-height: 148px; align-items: flex-end; flex: none; }
 .hand-hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* cards */
@@ -97,6 +97,17 @@ h1, h2, h3 { margin: 0; }
 .deck-back { position: relative; }
 .deck-back::after { content: ''; position: absolute; inset: 8px; border: 2px solid #46617f; border-radius: 6px; }
 
+/* rent tooltip */
+#tip { position: fixed; z-index: 120; display: none; pointer-events: none; background: #0b1016; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 18px #000a; max-width: 240px; }
+#tip .tt { font-weight: 700; margin-bottom: 4px; }
+#tip table { border-collapse: collapse; width: 100%; }
+#tip td { padding: 1px 0; }
+#tip td:last-child { text-align: right; font-weight: 700; padding-left: 14px; }
+#tip .sep { border-top: 1px solid var(--line); margin-top: 5px; padding-top: 5px; }
+.choice.locked { opacity: .55; cursor: default; }
+.choice.locked:hover { border-color: var(--line); }
+.choice.locked.on:hover { border-color: var(--accent); }
+
 /* modal */
 #modal { position: fixed; inset: 0; background: #000a; display: none; align-items: center; justify-content: center; z-index: 50; padding: 14px; }
 #modal.open { display: flex; }
@@ -118,6 +129,7 @@ h1, h2, h3 { margin: 0; }
   .log { display: none; }
   .card { width: 72px; height: 102px; }
   #game { height: auto; min-height: 100vh; }
+  .opps { max-height: none; }
 }
 </style>
 </head>
@@ -125,6 +137,7 @@ h1, h2, h3 { margin: 0; }
 <div id="root"></div>
 <div id="modal"></div>
 <div id="toast"></div>
+<div id="tip"></div>
 <script>
 'use strict';
 // ---------------------------------------------------------------- helpers
@@ -199,14 +212,13 @@ function cardEl(c, o = {}) {
     art(propGlyph(col));
     note(ladder(col), 'ladder');
   } else if (c.kind === 'wild') {
-    const placed = c.as && !o.both;
-    const cols = placed ? [c.as] : c.colors;
-    const rainbow = c.colors.length > 2 && !placed;
-    d.style.setProperty('--acc', rainbow ? '#8a63d2' : COL(cols[0]));
-    hdr('WILD', rainbow ? RAINBOW : bandBg(cols));
+    // Always show every color the card can be; when it is on a table, the active color is the border and the note.
+    const rainbow = c.colors.length > 2;
+    d.style.setProperty('--acc', c.as ? COL(c.as) : rainbow ? '#8a63d2' : COL(c.colors[0]));
+    hdr('WILD', rainbow ? RAINBOW : bandBg(c.colors));
     art(rainbow ? '<div class="disc" style="background:conic-gradient(#e0413d,#f28c28,#f3d13a,#2f9e57,#2450b5,#ee6fae,#e0413d)"></div>'
-      : `<div class="disc" style="background:${bandBg(cols)}"></div>`);
-    note(placed ? `as ${esc(cname(c.as))}` : rainbow ? 'Any color' : c.colors.map((x) => esc(cname(x))).join(' / '));
+      : `<div class="disc" style="background:${bandBg(c.colors)}"></div>`);
+    note(c.as ? `counts as <b>${esc(cname(c.as))}</b>` : rainbow ? 'Any color' : c.colors.map((x) => esc(cname(x))).join(' / '));
   } else if (c.kind === 'action') {
     d.style.setProperty('--acc', ACCENT[c.act]);
     hdr(esc(c.name), ACCENT[c.act]);
@@ -217,12 +229,37 @@ function cardEl(c, o = {}) {
     hdr(c.wildRent ? 'WILD RENT' : 'RENT', '#0f8f9d');
     const cols = c.colors.length > 2 ? ['red', 'orange', 'yellow', 'green', 'dblue', 'pink'] : c.colors;
     art(`<div class="chips${cols.length === 2 ? ' two' : ''}">${cols.map((x) => `<i style="background:${COL(x)}"></i>`).join('')}</div>`);
-    note(c.wildRent ? 'One player pays' : 'All players pay');
+    note('All players pay');
   }
   const showVal = !(c.kind === 'money' || (c.kind === 'wild' && c.value === 0));
   if (showVal) d.appendChild(el('div', 'val', `$${c.value}M`));
+  if (c.kind === 'prop' || c.kind === 'wild') attachRentTip(d, c);
   return d;
 }
+
+// Hover a property to see what rent each number of cards charges.
+function rentTipHtml(c) {
+  const cols = c.colors.length > 2 ? RULES.COLORS : c.colors;
+  return cols.map((col, i) => {
+    const rows = RULES.RENT[col].map((r, n) => `<tr><td>${n + 1} card${n ? 's' : ''}${n + 1 === size(col) ? ' (full set)' : ''}</td><td>$${r}M</td></tr>`).join('');
+    const extra = col === 'rr' || col === 'util' ? '' : '<div class="dim" style="margin-top:3px">Full set: 🏠 +$3M · 🏨 +$4M</div>';
+    return `<div class="${i ? 'sep' : ''}"><div class="tt"><span class="chip" style="background:${COL(col)}"></span>${esc(cname(col))} rent${c.as === col ? ' <span class="dim">(current)</span>' : ''}</div><table>${rows}</table>${extra}</div>`;
+  }).join('');
+}
+function attachRentTip(d, c) {
+  d.addEventListener('mouseenter', () => {
+    const t = $('#tip');
+    t.innerHTML = rentTipHtml(c);
+    t.style.display = 'block';
+    const r = d.getBoundingClientRect(), tw = t.offsetWidth, th = t.offsetHeight;
+    const x = Math.min(Math.max(6, r.left + r.width / 2 - tw / 2), innerWidth - tw - 6);
+    let y = r.top - th - 8;
+    if (y < 6) y = Math.min(r.bottom + 8, innerHeight - th - 6);
+    t.style.left = x + 'px'; t.style.top = y + 'px';
+  });
+  d.addEventListener('mouseleave', hideTip);
+}
+function hideTip() { $('#tip').style.display = 'none'; }
 
 function toast(msg) {
   const t = $('#toast');
@@ -291,6 +328,7 @@ function renderHome() {
 }
 
 function render() {
+  hideTip();
   if (!S) return renderHome();
   if (!S.game) { closeModal(); return renderLobby(); }
   renderGame();
@@ -567,18 +605,23 @@ function showPay() {
   if (!ui.paySel.size && g.suggest) g.suggest.forEach((id) => ui.paySel.add(id));
   const assets = [...my.bank.map((c) => ({ c, from: 'Bank' })), ...Object.values(my.groups).flatMap((gr) => gr.cards.map((c) => ({ c, from: 'Property' })))];
   const sumSel = () => assets.filter((a) => ui.paySel.has(a.c.id)).reduce((s, a) => s + a.c.value, 0);
+  // Money first: the bank must be spent before any property can be chosen.
+  const needProps = my.bankTotal < p.amount;
+  if (needProps) my.bank.forEach((c) => ui.paySel.add(c.id));
+  else assets.forEach((a) => { if (a.from === 'Property') ui.paySel.delete(a.c.id); });
   let paint;
-  const dlg = openModal(`Pay $${p.amount}M`, `${effectText()} Pick cards worth at least $${p.amount}M — no change is given.`, (body) => {
+  const dlg = openModal(`Pay $${p.amount}M`, `${effectText()} ${needProps ? 'Your whole bank goes first, then pick properties to cover the rest.' : 'Pay from your bank.'} No change is given.`, (body) => {
     const w = el('div', 'choices');
     body.appendChild(w);
     paint = () => {
       w.innerHTML = '';
       assets.forEach((a) => {
         const on = ui.paySel.has(a.c.id);
-        const ch = el('div', 'choice' + (on ? ' on' : ''));
+        const lock = a.from === 'Bank' ? needProps : !needProps;
+        const ch = el('div', 'choice' + (on ? ' on' : '') + (lock ? ' locked' : ''));
         ch.appendChild(cardEl(a.c, { size: 'small' }));
         ch.appendChild(el('div', 'who', a.from));
-        ch.onclick = () => { on ? ui.paySel.delete(a.c.id) : ui.paySel.add(a.c.id); paint(); update(); };
+        if (!lock) ch.onclick = () => { on ? ui.paySel.delete(a.c.id) : ui.paySel.add(a.c.id); paint(); update(); };
         w.appendChild(ch);
       });
     };
@@ -637,7 +680,7 @@ function choiceCard(card, label, onClick, size = 'small') {
 function onHandCard(c) {
   const g = G();
   const bankBtn = { label: `Bank as $${c.value}M`, onClick: () => { closeModal(); play({ t: 'bank', card: c.id }); } };
-  const sub = c.kind === 'action' ? ACT[c.act][1] : c.kind === 'rent' ? (c.wildRent ? 'Charge one player rent for any color you own.' : 'Charge all players rent for one of these colors.') : '';
+  const sub = c.kind === 'action' ? ACT[c.act][1] : c.kind === 'rent' ? (c.wildRent ? 'Charge all players rent for any color you own.' : 'Charge all players rent for one of these colors.') : '';
   const title = c.kind === 'money' ? `$${c.value}M` : c.name === 'Wild' ? 'Wild property' : c.name;
   const showCard = (body) => { const w = el('div', 'choices'); w.appendChild(cardEl(c, { size: 'big-card', both: true })); body.appendChild(w); };
 
@@ -743,13 +786,13 @@ function rentDialog(c) {
   const doubles = g.hand.filter((x) => x.act === 'dblrent');
   const opps = g.players.filter((p) => p.id !== S.you);
   const cols = c.colors.filter((col) => rentNow(my, col) > 0);
-  const st = { col: null, target: opps.length === 1 ? opps[0].id : null, dbl: 0 };
+  const st = { col: null, dbl: 0 };
   if (cols.length === 1) st.col = cols[0];
   const maxDbl = Math.min(doubles.length, g.playsLeft - 1);
   const bank = { label: `Bank as $${c.value}M`, onClick: () => { closeModal(); play({ t: 'bank', card: c.id }); } };
-  const dlg = openModal(c.name, c.wildRent ? 'Charge ONE player rent for a color you own.' : 'Charge ALL players rent for one of these colors.', (body) => {
-    const colBox = el('div'), tgtBox = el('div'), dblBox = el('div');
-    body.append(colBox, tgtBox, dblBox);
+  const dlg = openModal(c.name, c.wildRent ? 'Charge ALL players rent for any color you own.' : 'Charge ALL players rent for one of these colors.', (body) => {
+    const colBox = el('div'), dblBox = el('div');
+    body.append(colBox, dblBox);
     const paint = () => {
       colBox.innerHTML = '<div class="zone-title">Color</div>';
       const w = el('div', 'choices');
@@ -759,13 +802,6 @@ function rentDialog(c) {
         w.appendChild(ch);
       });
       colBox.appendChild(cols.length ? w : el('div', 'dim', 'You own no properties this card can charge for — bank it instead.'));
-      tgtBox.innerHTML = '';
-      if (c.wildRent) {
-        tgtBox.appendChild(el('div', 'zone-title', 'Charge'));
-        const w2 = el('div', 'choices');
-        opps.forEach((p) => { const ch = el('div', 'choice' + (st.target === p.id ? ' on' : ''), `<b>${esc(p.name)}</b><span class="who">assets ~$${assetSum(p)}M</span>`); ch.onclick = () => { st.target = p.id; paint(); }; w2.appendChild(ch); });
-        tgtBox.appendChild(w2);
-      }
       dblBox.innerHTML = '';
       if (maxDbl > 0) {
         dblBox.appendChild(el('div', 'zone-title', 'Double The Rent (each costs 1 play)'));
@@ -777,10 +813,10 @@ function rentDialog(c) {
       }
       const amt = st.col ? rentNow(my, st.col) * 2 ** st.dbl : 0;
       go.textContent = amt ? `Charge $${amt}M` : 'Charge rent';
-      go.disabled = !st.col || (c.wildRent && !st.target);
+      go.disabled = !st.col;
     };
     const go = el('button', 'primary', 'Charge rent');
-    go.onclick = () => { closeModal(); play({ t: 'rent', card: c.id, color: st.col, target: st.target, doubles: doubles.slice(0, st.dbl).map((d) => d.id) }); };
+    go.onclick = () => { closeModal(); play({ t: 'rent', card: c.id, color: st.col, doubles: doubles.slice(0, st.dbl).map((d) => d.id) }); };
     setTimeout(() => { $('#modal .btns').appendChild(go); paint(); });
   }, [cancelBtn, bank]);
 }
