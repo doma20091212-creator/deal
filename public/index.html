@@ -64,40 +64,34 @@ h1, h2, h3 { margin: 0; }
 .hand-hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* cards */
-.card { width: 86px; height: 122px; border-radius: 9px; background: #f6f1e4; color: #222; border: 2px solid #2a2a2a; position: relative; flex: none; overflow: hidden; display: flex; flex-direction: column; font-size: 11px; user-select: none; box-shadow: 0 2px 5px #0006; }
+.card { --acc: #2a2a2a; width: 86px; height: 122px; border-radius: 10px; background: #fdfcf8; color: #222; border: 2px solid var(--acc); position: relative; flex: none; overflow: hidden; display: flex; flex-direction: column; font-size: 11px; user-select: none; box-shadow: 0 2px 6px #0007; }
 .card.click { cursor: pointer; transition: transform .1s; }
 .card.click:hover { transform: translateY(-8px); }
 .card.sel { outline: 3px solid var(--accent); transform: translateY(-8px); }
 .card.dim { opacity: .5; }
-.card .val { position: absolute; top: 2px; left: 4px; font-weight: 800; font-size: 11px; background: #fffc; border-radius: 4px; padding: 0 3px; z-index: 2; }
-.card .band { flex: 0 0 34px; display: flex; align-items: flex-end; justify-content: center; padding: 3px; font-weight: 700; font-size: 11px; text-align: center; color: #fff; text-shadow: 0 1px 2px #000a; line-height: 1.05; }
-.card .body { flex: 1; padding: 3px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; }
-.card .big { font-size: 26px; font-weight: 800; }
-.card .icon { font-size: 28px; }
-.card .nm { font-weight: 700; font-size: 11px; line-height: 1.1; }
-.card .desc { font-size: 9px; color: #444; line-height: 1.1; }
-.card .ladder { font-size: 9px; color: #333; line-height: 1.25; text-align: left; align-self: stretch; padding-left: 8px; }
-.card.k-money { background: #d9efdc; }
-.card.k-money .big { color: #1f6b3a; }
-.card.k-action { background: #fbe9d0; }
-.card.k-rent { background: #fff; }
-.card.k-rent .bands { flex: 1; display: flex; flex-direction: column; }
-.card.k-rent .bands div { flex: 1; }
+.card .hdr { min-height: 2.4em; display: grid; align-content: center; padding: .2em .2em .2em 2.7em; text-align: center; font-weight: 800; font-size: .9em; overflow-wrap: anywhere; line-height: 1.05; color: #fff; text-shadow: 0 1px 2px #0006; }
+.card .val { position: absolute; top: .25em; left: .25em; min-width: 2em; text-align: center; font-weight: 800; font-size: .95em; background: #fff; color: #222; border-radius: 99px; padding: .1em .35em; z-index: 2; box-shadow: 0 0 0 1px #0003; }
+.card .art { flex: 1; display: grid; place-items: center; color: var(--acc); min-height: 0; padding: .2em; }
+.card .art svg { width: 62%; max-height: 100%; }
+.card .art.coin svg { width: 78%; }
+.card .note { font-size: .82em; line-height: 1.15; text-align: center; color: #444; padding: 0 .3em .4em; }
+.card .ladder { font-size: .82em; line-height: 1.3; color: #333; padding: 0 0 .4em .7em; text-align: left; }
+.card .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3em; width: 72%; }
+.card .chips.two { grid-template-columns: repeat(2, 1fr); width: 52%; }
+.card .chips i { display: block; aspect-ratio: 1; border-radius: .3em; border: 1px solid #0004; }
+.card .disc { width: 62%; aspect-ratio: 1; border-radius: 50%; border: 2px solid #0005; }
+.card.k-money { background: #eef8f0; }
+.card.k-rent { background: #f1fafb; }
 .card.mini { width: 46px; height: 64px; border-width: 1px; border-radius: 5px; font-size: 8px; }
-.card.mini .val { font-size: 8px; top: 1px; left: 2px; }
-.card.mini .band { flex: 0 0 24px; font-size: 7px; padding: 1px; }
-.card.mini .big { font-size: 13px; }
-.card.mini .icon { font-size: 15px; }
-.card.mini .nm { font-size: 7px; }
-.card.mini .desc, .card.mini .ladder { display: none; }
-.card.mini .body { padding: 1px; }
-.card.small { width: 62px; height: 88px; border-radius: 7px; }
-.card.small .band { flex-basis: 26px; font-size: 8px; }
-.card.small .big { font-size: 18px; }
-.card.small .icon { font-size: 20px; }
-.card.small .desc, .card.small .ladder { display: none; }
-.card.small .nm { font-size: 8px; }
+.card.mini .hdr { font-size: 0; min-height: 12px; padding: 0; }
+.card.mini .val { font-size: 7px; top: 1px; left: 1px; }
+.card.mini .note, .card.mini .ladder { display: none; }
+.card.mini .art svg { width: 74%; }
+.card.small { width: 62px; height: 88px; border-radius: 7px; font-size: 8px; }
+.card.small .note, .card.small .ladder { display: none; }
 .card.big-card { width: 130px; height: 184px; font-size: 15px; }
+.deck-back { position: relative; }
+.deck-back::after { content: ''; position: absolute; inset: 8px; border: 2px solid #46617f; border-radius: 6px; }
 
 /* modal */
 #modal { position: fixed; inset: 0; background: #000a; display: none; align-items: center; justify-content: center; z-index: 50; padding: 14px; }
@@ -155,37 +149,74 @@ const ACT = {
   hotel: ['🏨', 'Add to a set with a house: +$4M rent.'],
 };
 
+const svg = (inner) => `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const G_HOUSE = '<path d="M8 24 24 10l16 14v14H8z"/><path d="M20 38V28h8v10"/>';
+const ICON = {
+  dealbreaker: '<path d="M8 24 24 10l16 14v14H8z"/><path d="M27 12l-7 12 8 3-7 11"/>',
+  jsn: '<circle cx="24" cy="24" r="15"/><path d="M13 35 35 13"/>',
+  sly: '<path d="M5 20c6-4 13-4 19 0 6-4 13-4 19 0-1 10-7 14-13 8l-6-3-6 3c-6 6-12 2-13-8z"/><circle cx="16" cy="24" r="2.5"/><circle cx="32" cy="24" r="2.5"/>',
+  forced: '<path d="M8 17h30m-6-6 6 6-6 6M40 31H10m6-6-6 6 6 6"/>',
+  debt: '<circle cx="19" cy="24" r="12"/><text x="19" y="30" text-anchor="middle" font-size="17" font-weight="800" fill="currentColor" stroke="none">$</text><path d="M44 24H34m4-4-4 4 4 4"/>',
+  bday: '<path d="M8 40h32M10 40V28h28v12M10 33c5 4 9-4 14 0s9-4 14 0M24 28v-8"/><path d="M24 11c3 3 3 6 0 8-3-2-3-5 0-8z"/>',
+  passgo: '<path d="M8 12l14 12L8 36zM26 12l14 12-14 12z"/>',
+  dblrent: '<text x="24" y="33" text-anchor="middle" font-size="26" font-weight="800" fill="currentColor" stroke="none">×2</text>',
+  house: G_HOUSE,
+  hotel: '<path d="M12 41V7h24v34z"/><path d="M18 14h4m4 0h4M18 22h4m4 0h4M18 30h4m4 0h4M21 41v-6h6v6"/>',
+  rr: '<rect x="12" y="8" width="24" height="24" rx="4"/><path d="M12 21h24M15 41l4-9m14 9-4-9"/><circle cx="18" cy="26" r="1.6"/><circle cx="30" cy="26" r="1.6"/>',
+  util: '<path d="M17 32c0-4-6-6-6-12a13 13 0 0 1 26 0c0 6-6 8-6 12z"/><path d="M18 38h12M21 43h6"/>',
+};
+const ACCENT = {
+  dealbreaker: '#7c4dff', jsn: '#d63a3a', sly: '#2f6fe0', forced: '#0f9d8a', debt: '#d98a0b',
+  bday: '#d6478f', passgo: '#2f9e57', dblrent: '#e0661a', house: '#2f8f3f', hotel: '#c62f2f',
+};
+const DARK_TEXT = ['yellow', 'lblue', 'util'];
+
 function cardEl(c, o = {}) {
   const d = el('div', 'card k-' + c.kind + (o.size ? ' ' + o.size : ''));
   if (o.onClick) { d.classList.add('click'); d.onclick = o.onClick; }
   if (o.sel) d.classList.add('sel');
   if (o.dim) d.classList.add('dim');
-  const valTxt = c.kind === 'wild' && c.value === 0 ? '' : `$${c.value}M`;
-  if (valTxt) d.appendChild(el('div', 'val', valTxt));
-  const ladder = (col) => RULES.RENT[col].map((r, i) => `${i + 1}: $${r}M`).join('<br>');
+  const hdr = (text, bg, fg) => { const h = el('div', 'hdr', text); h.style.background = bg; if (fg) { h.style.color = fg; h.style.textShadow = 'none'; } d.appendChild(h); };
+  const art = (html, cls) => d.appendChild(el('div', 'art' + (cls ? ' ' + cls : ''), html));
+  const note = (html, cls) => d.appendChild(el('div', cls || 'note', html));
+  const ladder = (col) => RULES.RENT[col].map((r, i) => `${i + 1} → $${r}M`).join('<br>');
+  const propGlyph = (col) => svg(col === 'rr' || col === 'util' ? ICON[col] : G_HOUSE);
+  const bandBg = (cols) => cols.length === 1 ? COL(cols[0]) : `linear-gradient(90deg,${COL(cols[0])} 50%,${COL(cols[1])} 50%)`;
+  const RAINBOW = 'linear-gradient(90deg,#e0413d,#f28c28,#f3d13a,#2f9e57,#2450b5,#ee6fae)';
+
   if (c.kind === 'money') {
-    d.appendChild(el('div', 'body', `<div class="big">$${c.value}M</div>`));
+    d.style.setProperty('--acc', '#2f9e57');
+    hdr('MONEY', '#2f9e57');
+    art(svg(`<circle cx="24" cy="24" r="19"/><circle cx="24" cy="24" r="14" stroke-width="1.5"/><text x="24" y="${c.value >= 10 ? 29 : 30}" text-anchor="middle" font-size="${c.value >= 10 ? 15 : 19}" font-weight="800" fill="currentColor" stroke="none">${c.value}M</text>`), 'coin');
   } else if (c.kind === 'prop') {
-    d.appendChild(Object.assign(el('div', 'band', esc(cname(c.as || c.colors[0]))), { style: `background:${COL(c.colors[0])};${c.colors[0] === 'yellow' || c.colors[0] === 'lblue' || c.colors[0] === 'util' ? 'color:#111;text-shadow:none' : ''}` }));
-    d.appendChild(el('div', 'body', `<div class="ladder">${ladder(c.colors[0])}</div>`));
+    const col = c.colors[0];
+    d.style.setProperty('--acc', COL(col));
+    hdr(esc(cname(col)), COL(col), DARK_TEXT.includes(col) ? '#111' : null);
+    art(propGlyph(col));
+    note(ladder(col), 'ladder');
   } else if (c.kind === 'wild') {
-    const cols = c.as && !o.both ? [c.as] : c.colors;
-    const rainbow = c.colors.length > 2 && !(c.as && !o.both);
-    const bg = rainbow ? 'linear-gradient(90deg,#e0413d,#f28c28,#f3d13a,#2f9e57,#2450b5,#ee6fae)'
-      : cols.length === 1 ? COL(cols[0]) : `linear-gradient(90deg,${COL(cols[0])} 50%,${COL(cols[1])} 50%)`;
-    d.appendChild(Object.assign(el('div', 'band', 'WILD'), { style: `background:${bg}` }));
-    const label = c.as ? `as ${esc(cname(c.as))}` : rainbow ? 'Any color' : c.colors.map((x) => esc(cname(x))).join(' / ');
-    d.appendChild(el('div', 'body', `<div class="nm">${label}</div>`));
+    const placed = c.as && !o.both;
+    const cols = placed ? [c.as] : c.colors;
+    const rainbow = c.colors.length > 2 && !placed;
+    d.style.setProperty('--acc', rainbow ? '#8a63d2' : COL(cols[0]));
+    hdr('WILD', rainbow ? RAINBOW : bandBg(cols));
+    art(rainbow ? '<div class="disc" style="background:conic-gradient(#e0413d,#f28c28,#f3d13a,#2f9e57,#2450b5,#ee6fae,#e0413d)"></div>'
+      : `<div class="disc" style="background:${bandBg(cols)}"></div>`);
+    note(placed ? `as ${esc(cname(c.as))}` : rainbow ? 'Any color' : c.colors.map((x) => esc(cname(x))).join(' / '));
   } else if (c.kind === 'action') {
-    d.appendChild(el('div', 'body', `<div class="icon">${ACT[c.act][0]}</div><div class="nm">${esc(c.name)}</div><div class="desc">${esc(ACT[c.act][1])}</div>`));
+    d.style.setProperty('--acc', ACCENT[c.act]);
+    hdr(esc(c.name), ACCENT[c.act]);
+    art(svg(ICON[c.act]));
+    note(esc(ACT[c.act][1]));
   } else if (c.kind === 'rent') {
+    d.style.setProperty('--acc', '#0f8f9d');
+    hdr(c.wildRent ? 'WILD RENT' : 'RENT', '#0f8f9d');
     const cols = c.colors.length > 2 ? ['red', 'orange', 'yellow', 'green', 'dblue', 'pink'] : c.colors;
-    const bands = el('div', 'bands');
-    cols.forEach((x) => bands.appendChild(Object.assign(el('div'), { style: `background:${COL(x)}` })));
-    const lab = el('div', 'nm', c.wildRent ? 'WILD RENT<br>1 player' : 'RENT<br>all players');
-    lab.style.cssText = 'padding:3px;background:#fffc;text-align:center';
-    d.appendChild(bands); d.appendChild(lab);
+    art(`<div class="chips${cols.length === 2 ? ' two' : ''}">${cols.map((x) => `<i style="background:${COL(x)}"></i>`).join('')}</div>`);
+    note(c.wildRent ? 'One player pays' : 'All players pay');
   }
+  const showVal = !(c.kind === 'money' || (c.kind === 'wild' && c.value === 0));
+  if (showVal) d.appendChild(el('div', 'val', `$${c.value}M`));
   return d;
 }
 
